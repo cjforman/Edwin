@@ -1,0 +1,7 @@
+__pycache__/
+.pytest_cache/
+*.pyc
+# parts never live here: they are in the parts folder (EDWIN_PARTS_DIR)
+*.gcode
+*.stl
+*.3mf

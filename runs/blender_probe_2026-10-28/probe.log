@@ -1,0 +1,6 @@
+parsed 1864 polylines, 46526 points in 0.2s
+83 layer z values, z range 0.35..24.95, xy centre 237.4,100.0
+every10: 245 polylines -> C:\Users\User\AppData\Local\Temp\claude\D--OneDrive-work-Org-Forman-3DParts\48a9069c-e128-470e-9d4b-864a0c0026c5\scratchpad\br_probe\every10\every10_001_out\snapshot_001.png in 5s (146071 B)
+every3: 636 polylines -> C:\Users\User\AppData\Local\Temp\claude\D--OneDrive-work-Org-Forman-3DParts\48a9069c-e128-470e-9d4b-864a0c0026c5\scratchpad\br_probe\every3\every3_001_out\snapshot_001.png in 8s (146127 B)
+full: 1864 polylines -> C:\Users\User\AppData\Local\Temp\claude\D--OneDrive-work-Org-Forman-3DParts\48a9069c-e128-470e-9d4b-864a0c0026c5\scratchpad\br_probe\full\full_001_out\snapshot_001.png in 18s (146447 B)
+exit 0

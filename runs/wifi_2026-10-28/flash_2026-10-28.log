@@ -1,0 +1,274 @@
+port: COM6
+
+>>> M29
+GCode end-of-file being interpreted.
+ok
+    [1.2s]
+
+>>> M115
+FIRMWARE_NAME: RepRapFirmware for Duet 2 WiFi/Ethernet FIRMWARE_VERSION: 3.5.4 ELECTRONICS: Duet WiFi 1.02 or later + DueX5 FIRMWARE_DATE: 2024-11-24 10:43:42
+ok
+    [1.2s]
+
+>>> M997 S1 P"0:/firmware/DuetWiFiServer.bin"
+Trying to connect at 230400 baud: success, found ESP8266
+Erasing 8192 bytes...
+Erasing 690688 bytes...
+Uploading file...
+5% complete
+10% complete
+15% complete
+20% complete
+25% complete
+30% complete
+35% complete
+40% complete
+45% complete
+50% complete
+55% complete
+60% complete
+65% complete
+70% complete
+75% complete
+80% complete
+85% complete
+90% complete
+95% complete
+Upload successful
+ok
+    [54.0s]
+
+>>> M122
+=== Diagnostics ===
+RepRapFirmware for Duet 2 WiFi/Ethernet version 3.5.4 (2024-11-24 10:43:42) running on Duet WiFi 1.02 or later + DueX5
+Board ID: 0JD0M-9P6B2-NJ4S4-6JKF6-3S86N-1A12L
+Used output buffers: 1 of 26 (18 max)
+=== RTOS ===
+Static ram: 23488
+Dynamic ram: 75152 of which 0 recycled
+Never used RAM 11984, free system stack 166 words
+Tasks: NETWORK(1,ready,24.7%,141) HEAT(3,nWait 5,0.1%,328) Move(4,nWait 5,0.0%,361) DUEX(5,nWait 5,0.0%,23) MAIN(1,running,75.1%,742) IDLE(0,ready,0.0%,29), total 100.0%
+Owned mutexes: USB(MAIN)
+=== Platform ===
+Last reset 00:03:16 ago, cause: power up
+Last software reset at 2026-10-27 22:05, reason: StuckInSpinLoop, Gcodes spinning, available RAM 10968, slot 1
+Software reset code 0x0083 HFSR 0x00000000 CFSR 0x00000000 ICSR 0x0041f80f BFAR 0xe000ed38 SP 0x20001b98 Task IDLE Freestk 600 ok
+Stack: 00000000 20001304 10000000 e000e000 20005b30 0045ec99 0045e35e 61070000 0045e347 a5a5a5a5 ffffffff 00000000 0f57090a 2000ae28 200112dc ffffffff 20002c90 00000000 0045e3fb 20001c40 00000015 20002b6c 0045b843 200112d8 0041566f 200112dc 00000015
+Error status: 0x00
+Aux0 errors 0,0,0
+MCU temperature: min 26.1, current 28.1, max 28.4
+Supply voltage: min 24.3, current 24.4, max 24.6, under voltage events: 0, over voltage events: 0, power good: yes
+Heap OK, handles allocated/used 99/1, heap memory allocated/used/recyclable 2048/8/0, gc cycles 0
+Events: 0 queued, 0 completed
+Driver 0: standstill, SG min n/a
+Driver 1: standstill, SG min n/a
+Driver 2: standstill, SG min n/a
+Driver 3: standstill, SG min n/a
+Driver 4: standstill, SG min n/a
+Driver 5: standstill, SG min n/a
+Driver 6: standstill, SG min n/a
+Driver 7: standstill, SG min n/a
+Driver 8: standstill, SG min n/a
+Driver 9: standstill, SG min n/a
+Driver 10: 
+Driver 11: 
+Date/time: 2026-10-28 17:34:27
+Cache data hit count 4294967295
+Slowest loop: 1085.47ms; fastest: 0.20ms
+I2C nak errors 0, send timeouts 0, receive timeouts 0, finishTimeouts 0, resets 0
+=== Storage ===
+Free file entries: 10
+SD card 0 detected, interface speed: 20.0MBytes/sec
+SD card longest read time 251.1ms, write time 0.0ms, max retries 0
+=== Move ===
+DMs created 83, segments created 0, maxWait 0ms, bed compensation in use: none, height map offset 0.000, max steps late 0, min interval 0, bad calcs 0, ebfmin 0.00, ebfmax 0.00
+no step interrupt scheduled
+Moves shaped first try 0, on retry 0, too short 0, wrong shape 0, maybepossible 0
+=== DDARing 0 ===
+Scheduled moves 0, completed 0, hiccups 0, stepErrors 0, LaErrors 0, Underruns [0, 0, 0], CDDA state -1
+=== Heat ===
+Bed heaters 0 -1 -1 -1, chamber heaters -1 -1 -1 -1, ordering errs 0
+=== GCodes ===
+Movement locks held by null
+HTTP is idle in state(s) 0
+Telnet is idle in state(s) 0
+File is idle in state(s) 0
+USB is ready with "M122" in state(s) 0
+Aux is idle in state(s) 0
+Trigger is idle in state(s) 0
+Queue is idle in state(s) 0
+LCD is idle in state(s) 0
+Daemon is idle in state(s) 0
+Autopause is idle in state(s) 0
+Q0 segments left 0
+Code queue 0 is empty
+=== DueX ===
+Read count 0, 0.00 reads/min
+=== Network ===
+Slowest loop: 2708.03ms; fastest: 0.00ms
+Responder states: HTTP(0) HTTP(0) HTTP(0) FTP(0) Telnet(0)
+HTTP sessions: 0 of 8
+=== WiFi ===
+Interface state: changingMode
+Module is idle
+Failed messages: pending 0, notrdy 0, noresp 0
+Failed to get WiFi status
+Socket states: 0 0 0 0 0 0 0 0
+ok
+Error: failed to retrieve WiFi status message: SPI timeout
+WiFi module is idle
+Error: failed to change WiFi mode: SPI timeout
+    [10.2s]
+
+--- WiFi section ---
+=== WiFi ===
+Interface state: changingMode
+Module is idle
+Failed messages: pending 0, notrdy 0, noresp 0
+Failed to get WiFi status
+Socket states: 0 0 0 0 0 0 0 0
+ok
+Error: failed to retrieve WiFi status message: SPI timeout
+WiFi module is idle
+Error: failed to change WiFi mode: SPI timeout
+
+
+>>> M587
+Error: M587: use M552 to abandon the current connection attempt before using this command
+ok
+    [1.2s]
+
+>>> M552
+WiFi module is disabled
+ok
+    [1.2s]
+
+>>> M552
+WiFi module is disabled
+ok
+    [1.2s]
+
+>>> M552 S0
+ok
+WiFi module started
+    [15.2s]
+
+>>> M552
+WiFi module is idle
+ok
+    [1.3s]
+
+>>> M552 S1
+ok
+WiFi module is connected to access point <SSID>, IP address 192.168.1.14
+    [6.5s]
+
+>>> M552
+WiFi module is connected to access point <SSID>, IP address 192.168.1.14
+ok
+    [1.2s]
+
+>>> M122
+=== Diagnostics ===
+RepRapFirmware for Duet 2 WiFi/Ethernet version 3.5.4 (2024-11-24 10:43:42) running on Duet WiFi 1.02 or later + DueX5
+Board ID: 0JD0M-9P6B2-NJ4S4-6JKF6-3S86N-1A12L
+Used output buffers: 1 of 26 (18 max)
+=== RTOS ===
+Static ram: 23488
+Dynamic ram: 75152 of which 0 recycled
+Never used RAM 11984, free system stack 166 words
+Tasks: NETWORK(1,ready,7.8%,141) HEAT(3,nWait 5,0.1%,328) Move(4,nWait 5,0.0%,361) DUEX(5,nWait 5,0.0%,23) MAIN(1,running,92.1%,564) IDLE(0,ready,0.0%,29), total 100.0%
+Owned mutexes: USB(MAIN)
+=== Platform ===
+Last reset 00:04:26 ago, cause: power up
+Last software reset at 2026-10-27 22:05, reason: StuckInSpinLoop, Gcodes spinning, available RAM 10968, slot 1
+Software reset code 0x0083 HFSR 0x00000000 CFSR 0x00000000 ICSR 0x0041f80f BFAR 0xe000ed38 SP 0x20001b98 Task IDLE Freestk 600 ok
+Stack: 00000000 20001304 10000000 e000e000 20005b30 0045ec99 0045e35e 61070000 0045e347 a5a5a5a5 ffffffff 00000000 0f57090a 2000ae28 200112dc ffffffff 20002c90 00000000 0045e3fb 20001c40 00000015 20002b6c 0045b843 200112d8 0041566f 200112dc 00000015
+Error status: 0x00
+Aux0 errors 0,0,0
+MCU temperature: min 27.7, current 28.3, max 28.9
+Supply voltage: min 24.3, current 24.4, max 24.5, under voltage events: 0, over voltage events: 0, power good: yes
+Heap OK, handles allocated/used 99/1, heap memory allocated/used/recyclable 2048/8/0, gc cycles 0
+Events: 0 queued, 0 completed
+Driver 0: standstill, SG min n/a
+Driver 1: standstill, SG min n/a
+Driver 2: standstill, SG min n/a
+Driver 3: standstill, SG min n/a
+Driver 4: standstill, SG min n/a
+Driver 5: standstill, SG min n/a
+Driver 6: standstill, SG min n/a
+Driver 7: standstill, SG min n/a
+Driver 8: standstill, SG min n/a
+Driver 9: standstill, SG min n/a
+Driver 10: 
+Driver 11: 
+Date/time: 2026-10-28 17:35:37
+Cache data hit count 4294967295
+Slowest loop: 100.16ms; fastest: 0.20ms
+I2C nak errors 0, send timeouts 0, receive timeouts 0, finishTimeouts 0, resets 0
+=== Storage ===
+Free file entries: 10
+SD card 0 detected, interface speed: 20.0MBytes/sec
+SD card longest read time 3.3ms, write time 0.0ms, max retries 0
+=== Move ===
+DMs created 83, segments created 0, maxWait 0ms, bed compensation in use: none, height map offset 0.000, max steps late 0, min interval 0, bad calcs 0, ebfmin 0.00, ebfmax 0.00
+no step interrupt scheduled
+Moves shaped first try 0, on retry 0, too short 0, wrong shape 0, maybepossible 0
+=== DDARing 0 ===
+Scheduled moves 0, completed 0, hiccups 0, stepErrors 0, LaErrors 0, Underruns [0, 0, 0], CDDA state -1
+=== Heat ===
+Bed heaters 0 -1 -1 -1, chamber heaters -1 -1 -1 -1, ordering errs 0
+=== GCodes ===
+Movement locks held by null
+HTTP is idle in state(s) 0
+Telnet is idle in state(s) 0
+File is idle in state(s) 0
+USB is ready with "M122" in state(s) 0
+Aux is idle in state(s) 0
+Trigger is idle in state(s) 0
+Queue is idle in state(s) 0
+LCD is idle in state(s) 0
+Daemon is idle in state(s) 0
+Autopause is idle in state(s) 0
+Q0 segments left 0
+Code queue 0 is empty
+=== DueX ===
+Read count 0, 0.00 reads/min
+=== Network ===
+Slowest loop: 99.79ms; fastest: 0.00ms
+Responder states: HTTP(0) HTTP(0) HTTP(0) FTP(0) Telnet(0)
+HTTP sessions: 0 of 8
+=== WiFi ===
+Interface state: active
+Module is connected to access point 
+Failed messages: pending 0, notrdy 0, noresp 0
+Firmware version 2.2.0
+MAC address e0:98:06:22:67:09
+Module reset reason: Turned on by main processor, Vcc 3.37, flash size 4194304, free heap 46272
+WiFi IP address 192.168.1.14
+Signal strength -62dBm, channel 8, mode 802.11n, reconnections 0
+Clock register 00002002
+Socket states: 0 0 0 0 0 0 0 0
+ok
+    [1.3s]
+
+--- WiFi section ---
+=== WiFi ===
+Interface state: active
+Module is connected to access point 
+Failed messages: pending 0, notrdy 0, noresp 0
+Firmware version 2.2.0
+MAC address e0:98:06:22:67:09
+Module reset reason: Turned on by main processor, Vcc 3.37, flash size 4194304, free heap 46272
+WiFi IP address 192.168.1.14
+Signal strength -62dBm, channel 8, mode 802.11n, reconnections 0
+Clock register 00002002
+Socket states: 0 0 0 0 0 0 0 0
+ok
+
+
+>>> M587
+Remembered networks:
+<SSID> IP=192.168.1.14 GW=0.0.0.0 NM=0.0.0.0
+ok
+    [1.2s]

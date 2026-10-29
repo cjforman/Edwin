@@ -1,0 +1,29 @@
+== Tue Oct 27 23:26:58 CDT 2026 guard: axis limits vs part extents
+limits: {'X': (-35.0, 328.5), 'Y': (-49.0, 243.0), 'Z': (0, 300.0), 'C': (-45.0, 360.0)}
+part: {"tool": 2, "extruding_moves": 44662, "x": [195.02, 279.834], "y": [23.475, 176.525], "z": [0.35, 24.95], "tool_temp": 210.0} fits: True
+== Tue Oct 27 23:27:00 CDT 2026 starting agent
+23:27:01 checked: {"tool": 2, "extruding_moves": 44662, "x": [195.02, 279.834], "y": [23.475, 176.525], "z": [0.35, 24.95], "tool_temp": 210.0}
+23:27:02   usb upload: 52490 lines, 1413677 B -> 0:/gcodes/ball_joint.T2.gcode via COM6
+23:27:03   usb COM6: FIRMWARE_NAME: RepRapFirmware for Duet 2 WiFi/Ethernet FIRMWARE_VERSION: 3.5.4 ELECTRONICS
+23:27:03 upload   0% (4096/1413677, 0 s)
+23:27:05 upload   9% (135168/1413677, 2 s)
+23:27:06 upload  18% (266240/1413677, 3 s)
+23:27:07 upload  28% (397312/1413677, 4 s)
+23:27:08 upload  37% (528384/1413677, 4 s)
+23:27:08 upload  46% (659456/1413677, 5 s)
+23:27:09 upload  55% (790528/1413677, 6 s)
+23:27:10 upload  65% (921600/1413677, 7 s)
+23:27:11 upload  74% (1052672/1413677, 8 s)
+23:27:12 upload  83% (1183744/1413677, 9 s)
+23:27:13 upload  93% (1314816/1413677, 10 s)
+23:27:14 upload 100% (1413677/1413677, 11 s)
+23:27:14   usb: wrote 1413677 B to 0:/gcodes/ball_joint.T2.gcode in 10.88 s
+23:27:16 uploaded: {"remote": "0:/gcodes/ball_joint.T2.gcode", "transport": "usb:COM6", "bytes": 1413677, "lines": 52490, "seconds": 12.64, "verified": "size", "crc32": "15ba6592"}
+23:27:17   -> M32 "0:/gcodes/ball_joint.T2.gcode"
+23:27:19 started ball_joint.T2.gcode: 'File 0:/gcodes/ball_joint.T2.gcode selected for printing'
+23:27:19 processing  layer None/0    0.0%  elapsed 0:00:02  left ?
+23:28:20 processing  layer None/0    0.0%  elapsed 0:01:03  left ?
+23:29:22 processing  layer None/0    0.0%  elapsed 0:02:04  left 268:01:09
+23:30:02 off         layer None/0    0.0%  elapsed 0:02:45  left 268:01:09
+23:30:02 job ball_joint.T2.gcode completed; printer off; link stats {'requests': 85, 'retries': 0, 'reconnects': 0}
+== Tue Oct 27 23:30:03 CDT 2026 agent exited with 0

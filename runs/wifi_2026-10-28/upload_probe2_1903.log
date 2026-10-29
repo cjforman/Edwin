@@ -1,0 +1,12 @@
+size=  4000 chunk=1460 sndbuf=8192 conn=close: OK status='' body=''  0.1s  slow sends(bytes,sec)=[]
+   on card: size=4000 expected=4000
+size= 16000 chunk=1460 sndbuf=8192 conn=close: OK status='' body=''  2.0s  slow sends(bytes,sec)=[(16000, 0.31)]
+   on card: size=16000 expected=16000
+size= 59000 chunk=1460 sndbuf=8192 conn=close: OK status='' body=''  7.1s  slow sends(bytes,sec)=[(14600, 0.95), (16060, 0.5), (17520, 0.92), (20440, 0.32), (21900, 2.26), (23360, 0.52), (32120, 0.21), (33580, 0.26)]
+   on card: size=59000 expected=59000
+size= 59000 chunk=1460 sndbuf=8192 conn=keep-alive: OK status='HTTP/1.1 200 OK' body=''  3.1s  slow sends(bytes,sec)=[(21900, 0.3), (23360, 0.46), (29200, 0.98), (37960, 0.42), (39420, 0.24), (40880, 0.32)]
+   on card: size=59000 expected=59000
+size= 59000 chunk=512 sndbuf=2048 conn=close: OK status='' body=''  1.3s  slow sends(bytes,sec)=[(8704, 0.25), (57856, 0.2), (58368, 0.4)]
+   on card: size=59000 expected=59000
+M122 (network lines):
+
