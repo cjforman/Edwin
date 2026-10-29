@@ -65,7 +65,7 @@ whichever the command wants); a path works too.
    by side, the first-layer picture, and the estimate line. Ask: "Print it?
    About H:MM and N g." Then stop and wait.
 9. **Print** only after an explicit yes in this conversation, with someone
-   in the room and the printer on, idle and homed:
+   in the room and the printer on and idle:
 
    ```bash
    python agent.py 192.168.1.14 print NAME --tool 2 --yes --timelapse
@@ -74,9 +74,13 @@ whichever the command wants); a path works too.
    `--timelapse` with no argument records Jetson camera 1 into
    `<parts>/NAME/timelapse/` (Jetson on, SymbolicTM's camera server
    running, no SymbolicTM session connected; camera 0 belongs to
-   SymbolicTM). Edwin checks the printer is idle and homed and has T2,
-   uploads over USB when the cable is in (else Wi-Fi), starts from the SD
-   card, watches to the end and logs to `<parts>/NAME/agent_<stamp>.log`.
+   SymbolicTM). Edwin homes the printer if it is not (refused with a tool
+   on the carriage: say so and stop), pictures the bed and stops if it
+   differs from the empty-bed reference (look at `<parts>/NAME/bed_before.jpg`,
+   show it, and rerun with `--bed-clear` only if the user agrees it is
+   clear), checks it has T2, uploads over USB when the cable is in (else
+   Wi-Fi; plug the cable in for anything over a megabyte), starts from the
+   SD card, watches to the end and logs to `<parts>/NAME/agent_<stamp>.log`.
 
 ## Rules
 

@@ -42,11 +42,14 @@ means `<parts>/cube30_m3/cube30_m3.T2.gcode`. Paths work too, and
    It shows you the OpenSCAD preview and the Blender build side by side,
    the first-layer picture, and one line: "1:46, 13.3 g, 149 layers,
    52 x 52 x 30 mm on the bed (skirt and brim included)". Then it stops.
-4. You say yes, with the printer on, idle and homed, the Jetson on,
+4. You say yes, with the printer on and idle, the Jetson on,
    SymbolicTM's camera server running and no SymbolicTM session connected,
    and you in the room. The session runs
    `agent.py 192.168.1.14 print cube30_m3 --tool 2 --yes --timelapse`.
-   Edwin checks the printer, uploads over USB if the cable is in (1.4 MB in
+   Edwin homes the printer if it is not (refused with a tool on the
+   carriage), pictures the bed with camera 1 and stops if the picture
+   differs from the empty-bed reference (`--bed-clear` overrides when you
+   have looked), uploads over USB if the cable is in (1.4 MB in
    11 s) or over Wi-Fi if not (2.3 MB in 16 s), starts the job from the SD
    card, watches it to the end, records a frame per layer from camera 1
    into `<parts>/cube30_m3/timelapse/` and writes an MP4, and logs every
@@ -79,15 +82,22 @@ python -m pytest tests -q
 `--slice` takes a `.scad` (rendered first), an STL (sliced with
 `profiles/`, or the `--ini` files you name) or a `.3mf` (its own settings),
 always with the ToolChanger start and end G-code for `--tool` patched in.
-`print` refuses to start without `--yes`, and before starting checks that
-the printer is idle, homed, and has the tool. A G-code file from the E3D
+`print` refuses to start without `--yes`. Before starting it homes the
+printer when an axis is unhomed (`G28`; refused while a tool is on the
+carriage, because homeall.g turns the coupler), checks that the printer
+is idle and has the tool, and pictures the bed with Jetson camera 1 into
+`<job>/bed_before.jpg`, scored against `calib/cam1_bed_empty.jpg` by
+`bed.py` (take the reference with `python bed.py reference` with the bed
+empty and the printer homed; `--bed-clear` skips the check; without a
+reference or a camera the check is logged and the print goes on).
+`python agent.py HOST home` homes on its own. A G-code file from the E3D
 profile is rewritten as `<name>.T<tool>.gcode` (camera tool parked, print
 tool heated and picked, parked again at the end) and checked for tool,
 heater, bed-area and height problems. `--port none` forces the Wi-Fi path;
 `--port COM6` names the cable. `--timelapse` with no argument records into
 `<job>/timelapse/`.
 
-**Changing Edwin.** Edit here, run `python -m pytest tests -q` (25 tests,
+**Changing Edwin.** Edit here, run `python -m pytest tests -q` (36 tests,
 about 30 s; the OpenSCAD, PrusaSlicer and Blender ones skip where those
 are missing), commit, push. The parts folder is never touched by git and
 this repo never holds a part, a credential or the home network's name
@@ -105,6 +115,7 @@ this repo never holds a part, a credential or the home network's name
 | `prusa.py` | PrusaSlicer console slicing and profile patching |
 | `profiles/` | the E3D PrusaSlicer presets Edwin slices a bare STL with (see its README) |
 | `timelapse.py`, `jetson_cam.py` | per-layer frames from Jetson camera 1 into an MP4 |
+| `bed.py`, `calib/` | is the bed clear: a camera 1 picture scored against the empty-bed reference |
 | `cam_preview.py`, `focus_map.py` | camera aiming and focus aids |
 | `tests/` | offline tests against a fake Duet with fault injection; `test_part.py` also drives OpenSCAD, PrusaSlicer and Blender when installed |
 | `firmware/` | DuetWiFiServer 2.2.0 (installed 2026-10-28) and the 1.23 release it replaced: Duet's binaries, no credentials |
@@ -236,7 +247,7 @@ estimate (1:46, 13.3 g) in its own folder.
   line and the timelapse now go by Z, and that a missed camera frame needs
   one retry.
 
-Offline: `python -m pytest tests` (29 tests, about 30 s) covers resets,
+Offline: `python -m pytest tests` (36 tests, about 50 s) covers resets,
 expired sessions, Wi-Fi uploads with dropped connections, USB, the watch
 loop, the job folders, fit and estimate, the timelapse's layer detection,
 and, when the tools are installed, OpenSCAD rendering, slicing with the

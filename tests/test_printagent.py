@@ -179,9 +179,11 @@ class Handler(http.server.BaseHTTPRequestHandler):
         if key == "state.status":
             return s.status
         if key == "state":
-            return {"status": s.status, "currentTool": -1, "upTime": 100}
+            return {"status": s.status, "currentTool": getattr(s, "current_tool", -1), "upTime": 100}
         if key == "move.axes":
             return [{"letter": a, "homed": s.homed, "userPosition": 0.35 if a == "Z" else 100.0} for a in "XYZ"]
+        if key == "heat.heaters":
+            return [{"current": 25.0, "active": 0, "state": "off"}]
         if key == "tools":
             return [{"number": 0, "name": "cam", "heaters": [], "active": [], "standby": []},
                     {"number": 2, "name": "T2", "heaters": [2], "active": [0], "standby": [0]}]
@@ -224,6 +226,10 @@ class Handler(http.server.BaseHTTPRequestHandler):
                         s.replies.append("Error: file not found")
                 elif cmd == "M29":
                     s.replies.append("Error: not writing a file")
+                elif cmd == "G28":
+                    s.homed = True
+                elif cmd == "T-1":
+                    s.current_tool = -1
         for i, (sub, times) in enumerate(list(s.fail_after_apply)):
             if times > 0 and applied and sub in code:
                 s.fail_after_apply[i] = (sub, times - 1)

@@ -7,6 +7,7 @@ A target may be a path or a bare part name: ``print cube30_m3 --yes`` prints
 
   python agent.py HOST status
   python agent.py HOST link                              measure the Wi-Fi link with small requests
+  python agent.py HOST home                              G28 if any axis is unhomed (refused with a tool on the carriage)
   python agent.py HOST upload FILE.gcode [--port auto|COMn|none] [--verify size|full]
   python agent.py HOST print FILE.gcode --tool 2 --yes [--port ...] [--timelapse [DIR]]
   python agent.py HOST print MODEL.stl|.3mf|.scad --slice [--center X,Y] [--ini PROFILE.ini ...] --tool 2 --yes
@@ -212,13 +213,55 @@ def finish_timelapse(proc, timeout=300):
         log("timelapse still running; leaving it to finish on its own")
 
 
-def print_job(d, path, tool, port, verify, start, timelapse_dir=None, poll=3.0, job=None):
+def ensure_homed(d):
+    """Home the printer (G28) when any of X, Y, Z is unhomed; refused with a tool on the carriage."""
+    st = d.status()
+    if all(st["homed"].get(a) for a in "XYZ"):
+        return st
+    log(f"not homed ({st['homed']}): homing with G28")
+    homed = d.home()
+    log(f"homed: {homed}")
+    return d.status()
+
+
+def bed_check(job, skip=False):
+    """Picture the bed (camera 1) into <job>/bed_before.jpg and score it against the empty-bed reference.
+
+    Stops the print when something is on the bed. Without a reference, or
+    without the camera, it logs that and lets the print go on: the person
+    who said --yes is the check then.
+    """
+    if skip:
+        log("bed check skipped (--bed-clear)")
+        return None
+    import bed
+    path = os.path.join(job or ".", "bed_before.jpg")
+    try:
+        bed.snapshot(path)
+        r = bed.check(path)
+    except FileNotFoundError as e:
+        log(f"bed check: {e}; the picture is {path}; continuing")
+        return None
+    except Exception as e:
+        log(f"bed check failed ({type(e).__name__}: {str(e)[:120]}); continuing without it")
+        return None
+    log(f"bed: score {r['score']:.3f} against threshold {r['threshold']}, "
+        f"{'clear' if r['clear'] else 'NOT CLEAR'}; picture {path}")
+    if not r["clear"]:
+        raise SystemExit(f"bed not clear (score {r['score']:.3f} > {r['threshold']}): look at {path}; "
+                         "clear the bed, or pass --bed-clear if the picture shows it is")
+    return r
+
+
+def print_job(d, path, tool, port, verify, start, timelapse_dir=None, poll=3.0, job=None, bed_clear=False):
     path, summary = prepared_gcode(path, tool, job)
     log("checked: " + json.dumps(summary))
-    st = d.status()
+    st = ensure_homed(d) if start else d.status()
     problems = duet.preflight(st, tool)
     if problems:
         raise SystemExit("preflight:\n  " + "\n  ".join(problems))
+    if start:
+        bed_check(job, skip=bed_clear)
     name = os.path.basename(path)
 
     def progress(i, n, s):
@@ -270,7 +313,7 @@ def timelapse_dir(option, job):
 def main(argv=None):
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("host")
-    ap.add_argument("action", choices=("status", "link", "upload", "print", "watch", "delete"))
+    ap.add_argument("action", choices=("status", "link", "home", "upload", "print", "watch", "delete"))
     ap.add_argument("target", nargs="?", help="G-code file, model (with --slice), or job name")
     ap.add_argument("--tool", type=int, default=2)
     ap.add_argument("--password", default=os.environ.get("DUET_PASSWORD", ""))
@@ -285,6 +328,8 @@ def main(argv=None):
                     help="run timelapse.py (Jetson camera 1) during the print, into DIR (default <job>/timelapse)")
     ap.add_argument("--poll", type=float, default=3.0)
     ap.add_argument("--yes", action="store_true", help="really start the print")
+    ap.add_argument("--bed-clear", action="store_true",
+                    help="skip the camera check of the bed before starting (you looked, it is clear)")
     a = ap.parse_args(argv)
 
     if a.target and a.action in ("upload", "print"):
@@ -310,6 +355,9 @@ def main(argv=None):
         if a.action == "link":
             print(json.dumps(link_test(d), indent=1))
             return 0
+        if a.action == "home":
+            log(f"homed: {json.dumps(ensure_homed(d)['homed'])}")
+            return 0
         if a.action == "watch":
             proc = start_timelapse(a.host, timelapse_dir(a.timelapse, job)) if a.timelapse else None
             try:
@@ -331,7 +379,8 @@ def main(argv=None):
                           progress=lambda i, n, s: log(f"upload {100 * i // max(n, 1):3d}% ({i}/{n}, {s:.0f} s)"))
             log("uploaded: " + json.dumps(up))
             return 0
-        return print_job(d, path, a.tool, a.port, a.verify, a.yes, timelapse_dir(a.timelapse, job), a.poll, job)
+        return print_job(d, path, a.tool, a.port, a.verify, a.yes, timelapse_dir(a.timelapse, job), a.poll, job,
+                         bed_clear=a.bed_clear)
 
 
 if __name__ == "__main__":

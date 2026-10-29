@@ -451,6 +451,27 @@ class Duet:
 
     # ---- printing --------------------------------------------------------
 
+    def home(self, timeout=180, poll=2.0):
+        """``G28`` on an idle printer with no tool on the carriage; returns the homed dict once X, Y, Z are homed.
+
+        Refused with a tool attached: the ToolChanger's homeall.g homes C by
+        turning the coupler, which would let go of the tool in mid-air.
+        """
+        st = self.status()
+        if st["status"] != "idle":
+            raise DuetError(f"printer is '{st['status']}', not idle: not homing")
+        if st["current_tool"] not in (None, -1):
+            raise DuetError(f"T{st['current_tool']} is on the carriage with axes unhomed: not homing "
+                            "(homeall.g turns the coupler); park it by hand first")
+        self.gcode("G28", wait_reply=1.0)
+        t0 = time.time()
+        while time.time() - t0 < timeout:
+            st = self.status()
+            if st["status"] == "idle" and all(st["homed"].get(a) for a in "XYZ"):
+                return st["homed"]
+            time.sleep(poll)
+        raise DuetError(f"not homed {timeout} s after G28: {st['homed']} ({st['status']})")
+
     def start(self, name):
         st = self.status()
         if st["status"] != "idle":
@@ -471,7 +492,7 @@ def preflight(st, tool):
     if st["status"] != "idle":
         problems.append(f"printer status is '{st['status']}', not idle")
     if not all(st["homed"].get(a) for a in "XYZ"):
-        problems.append(f"not homed: {st['homed']} (T-1 needs homed axes to reach the dock)")
+        problems.append(f"not homed: {st['homed']} (a print homes first with G28; a tool on the carriage blocks that)")
     if tool not in [t["number"] for t in st["tools"]]:
         problems.append(f"T{tool} is not defined on the printer")
     return problems
