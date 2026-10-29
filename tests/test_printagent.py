@@ -181,7 +181,7 @@ class Handler(http.server.BaseHTTPRequestHandler):
         if key == "state":
             return {"status": s.status, "currentTool": -1, "upTime": 100}
         if key == "move.axes":
-            return [{"letter": a, "homed": s.homed} for a in "XYZ"]
+            return [{"letter": a, "homed": s.homed, "userPosition": 0.35 if a == "Z" else 100.0} for a in "XYZ"]
         if key == "tools":
             return [{"number": 0, "name": "cam", "heaters": [], "active": [], "standby": []},
                     {"number": 2, "name": "T2", "heaters": [2], "active": [0], "standby": [0]}]

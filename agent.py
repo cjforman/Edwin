@@ -180,7 +180,9 @@ def watch(d, poll=3.0, until_started=30.0, report_every=60.0, sleep=time.sleep):
             started = True
         key = (st, p["layer"], int(100 * (p["fraction"] or 0)))
         if key != last_key or time.time() - t_last > report_every:
-            log(f"{st:<11} layer {p['layer']}/{p['layers']}  {100 * (p['fraction'] or 0):5.1f}%  "
+            # RRF counts layers only when the file kept its comments (Wi-Fi upload); after a USB upload report Z
+            where = f"layer {p['layer']}/{p['layers']}" if p["layer"] is not None else f"z {p.get('z')}"
+            log(f"{st:<11} {where}  {100 * (p['fraction'] or 0):5.1f}%  "
                 f"elapsed {fmt_secs(p['duration'])}  left {fmt_secs(p['time_left'])}")
             last_key, t_last = key, time.time()
         if started and st not in ACTIVE:

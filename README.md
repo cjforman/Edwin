@@ -175,7 +175,13 @@ Consequences:
 `M28` strips comments, trailing whitespace and blank lines, so a file
 uploaded over USB is the stripped text on the card and verification
 compares against that. `rr_upload` writes the bytes as sent, comments
-included.
+included. The stripped file has no `;LAYER_CHANGE` markers and no
+settings trailer, so for a USB-uploaded job RRF reports no layer number,
+no layer count and no print-time estimate (`job.layer` stays null). The
+watch loop and the timelapse therefore go by Z: the watch line shows
+`z 18.35` instead of `layer 92/149`, and `timelapse.py` takes a frame at
+every change of Z while printing. `--port none` forces the Wi-Fi upload
+when you want the Duet's own layer and time figures.
 
 ### The chunked Wi-Fi path, removed
 
@@ -220,12 +226,23 @@ previewed, rendered and fitted; the ball joint rendered in Blender in
 from OpenSCAD source to checked G-code, two Blender pictures and an
 estimate (1:46, 13.3 g) in its own folder.
 
-Offline: `python -m pytest tests` (25 tests, about 30 s) covers resets,
-expired sessions, Wi-Fi uploads with dropped connections, USB, the watch
-loop, the job folders, fit and estimate, and, when the tools are
-installed, OpenSCAD rendering, slicing with the presets and a Blender
-render.
+* 2026-10-29 09:10 to 10:59, the first watched print (phase 5 of the
+  plan, `cube30_m3/agent_20261029_090953.log`): `cube30_m3` uploaded over
+  USB (876 kB in 4.8 s, size verified), started with `M32`, printed to
+  completion in 1:48:39 and reported "completed; printer idle" (4148 link
+  requests, no retries, no reconnects); timelapse MP4 of 138 frames in
+  `cube30_m3/timelapse/`. The print showed that a USB-uploaded file gives
+  the Duet no layer count (see "M28 strips comments" above), so the watch
+  line and the timelapse now go by Z, and that a missed camera frame needs
+  one retry.
 
-Not yet done on the printer: a print watched to completion and the
-timelapse alongside a print (phase 5 of the plan). The `/part` skill has
-not yet been driven by a fresh session typing `/part`.
+Offline: `python -m pytest tests` (29 tests, about 30 s) covers resets,
+expired sessions, Wi-Fi uploads with dropped connections, USB, the watch
+loop, the job folders, fit and estimate, the timelapse's layer detection,
+and, when the tools are installed, OpenSCAD rendering, slicing with the
+presets and a Blender render.
+
+Not yet done: the `/part` skill driven by a fresh session typing `/part`;
+a brush wipe before the print (the Duet has `macros/wipe.g`, nothing calls
+it); a lamp on the bed for the timelapse. The `printagent` env needs
+`pyzmq`, `opencv-python-headless` and `numpy` for the timelapse.

@@ -10,8 +10,10 @@ the printAgent session against the agent's real state, with the Wi-Fi
 upload phase and the Blender render phase added, and then **phases 0 to 4
 built and run** that night on the owner's "go as far as the first watched
 print". Each phase below ends with its gate and what the gate showed.
-Phase 5, the watched print, is the next review gate. The code was moved to
-`D:\Source\Edwin` and committed on 2026-10-29; the parts folder stays out of git.
+The code was moved to `D:\Source\Edwin` and committed on 2026-10-29; the
+parts folder stays out of git. **Phase 5, the watched print, passed on
+2026-10-29**: the cube printed to completion with the timelapse (see the
+phase for what it showed).
 
 ## The job folder rule (owner, 2026-10-28)
 
@@ -204,7 +206,7 @@ the bed, cutter through both faces), then preview, render (30 x 30 x 30 mm,
 brim. Nine files in `3DParts/cube30_m3/`, nothing uploaded. The pictures
 show the hole, the brim and the skirt as they would print.
 
-## Phase 5: the first watched print (printer time) — NEXT
+## Phase 5: the first watched print (printer time) — DONE 2026-10-29
 
 The agent's own untested half: `M32` start, the watch loop to completion,
 the corrected `off`/`halted` outcome reporting, and the Jetson timelapse
@@ -214,10 +216,25 @@ the presets). Someone is in the room for this one, and the printer stays
 on.
 
 ```bash
-python agent.py 192.168.1.14 print ../cube30_m3/cube30_m3.T2.gcode --tool 2 --yes --timelapse
+python agent.py 192.168.1.14 print cube30_m3 --tool 2 --yes --timelapse
 ```
 
 Gate: a finished part on the bed and an MP4 in `3DParts/<name>/timelapse/`.
+
+What the gate showed (2026-10-29, 09:10 to 10:59, owner in the room):
+the cube uploaded over USB (876 kB in 4.8 s, size verified), started with
+`M32`, printed in 1:48:39 and was reported "completed; printer idle" with
+4148 link requests, no retries and no reconnects. Two faults in the
+timelapse, both fixed the same morning: the Duet reported no layer number
+because `M28` strips the slicer comments, so `timelapse.py` (and the watch
+line) now go by Z when there is no layer counter; and the killed first
+timelapse left a dead puller on the Jetson that took every second frame
+for twenty minutes, so a missed frame is retried once. The MP4 was made by
+a Z-triggered stand-in run during the print (138 frames). The `printagent`
+env needed `pyzmq`, `opencv-python-headless` and `numpy` for the timelapse.
+Still open: a lamp on the bed (the frames are dark), the first-frame
+numbering, and a brush wipe before the print (the Duet has `wipe.g`;
+nothing calls it).
 
 ## Phase 6, optional: unattended
 

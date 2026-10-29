@@ -229,14 +229,18 @@ class Duet:
         """Small, poll-friendly view of a running job."""
         job = self.model("job", "d99vn")
         status = self.status_word()
+        axes = self.model("move.axes", "d99vn")
+        z = next((a.get("userPosition") for a in axes if a and a.get("letter") == "Z"), None)
         f = job.get("file") or {}
         size = f.get("size") or 0
         pos = job.get("filePosition") or 0
         return {
             "status": status,
             "file": f.get("fileName"),
+            # None after a USB upload: M28 keeps no comments, so RRF finds no layer markers and counts nothing
             "layer": job.get("layer"),
             "layers": f.get("numLayers"),
+            "z": z,
             "fraction": (pos / size) if size else None,
             "duration": job.get("duration"),
             "time_left": (job.get("timesLeft") or {}).get("file"),

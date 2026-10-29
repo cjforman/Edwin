@@ -8,6 +8,9 @@ them. Default camera is 1: camera 0 belongs to SymbolicTM.
 
 Caveat: the server PUSHes frames round-robin to every connected PULL
 socket, so don't run this while a SymbolicTM session is also connected.
+A client killed without close() counts as connected until the Jetson
+notices the dead TCP peer (about twenty minutes on 2026-10-29), and every
+other frame goes to it meanwhile; grab() then times out, so retry once.
 """
 import json
 import time
