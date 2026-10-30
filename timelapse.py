@@ -4,8 +4,13 @@ Polls the Duet's object model and grabs a frame from Jetson camera 1
 (read-only capture) at every layer change, stamped with the layer or Z,
 the time and the temperatures. When the printer leaves "processing" it
 takes a final frame, writes an MP4 and restores SymbolicTM's camserver
-settings (imagingParams_symbolictm.json), since camera 1's crop was
-changed for this.
+settings (imagingParams_symbolictm.json), since camera 1's crop, exposure,
+gain and frame rate were changed for this (cam1_print_view.json), and
+flashes the read ring on for each shot (about two seconds a layer) and
+leaves it off between shots and at the end. The view of 2026-10-29
+is for a dark room with the ring just out of shot, lighting the print from
+the front: 100 ms, gain 2, 8 fps (bed about 45 of 255, 1% clipped on the
+tool). Under the flood light use 15 ms, gain 1.
 
 Layer changes come from RRF's ``job.layer`` when the Duet reports one,
 which it does only for a file that kept its slicer comments (a Wi-Fi
@@ -72,15 +77,22 @@ def frame_name(seq, layer, z, done=False):
     return f"layer_{seq:04d}_{where}.jpg"
 
 
+def split_view(view):
+    """cam1_print_view.json -> (camera parameters to merge over SymbolicTM's, led block or None)."""
+    params = {k: v for k, v in view.items() if k != "led"}
+    return params, view.get("led")
+
+
 def z_of(axes):
     return next((a.get("userPosition") for a in axes if a and a.get("letter") == "Z"), None)
 
 
-def grab_with_retry(cam, attempts=2):
+def grab_with_retry(cam, led=None, attempts=2):
+    """One frame, the ring flashed on for it when `led` is given; a missed frame is retried."""
     err = None
     for _ in range(attempts):
         try:
-            return cam.grab()
+            return cam.grab(led=led)
         except Exception as e:
             err = e
     raise err
@@ -92,7 +104,8 @@ def main():
     ap.add_argument("out")
     ap.add_argument("--fps", type=int, default=12)
     ap.add_argument("--poll", type=float, default=2.0)
-    ap.add_argument("--crop", default="1250,1450,1600,1200", help="camera 1 crop x,y,w,h on the 3424x3424 frame")
+    ap.add_argument("--view", default=os.path.join(HERE, "cam1_print_view.json"),
+                    help="camera 1 settings for the print view (crop, exposure, gain, frame rate), merged over SymbolicTM's")
     ap.add_argument("--idle-end", type=float, default=120.0,
                     help="seconds out of 'processing' after which to stop even if no layer was seen")
     a = ap.parse_args()
@@ -100,12 +113,16 @@ def main():
     os.makedirs(frames, exist_ok=True)
     with open(os.path.join(HERE, "imagingParams_symbolictm.json")) as f:
         base = json.load(f)
-    x, y, w, h = (int(v) for v in a.crop.split(","))
+    with open(a.view) as f:
+        view = json.load(f)
 
     d = duet.Duet(a.host)
     d.connect()
     cam = jetson_cam.JetsonCam(cam=1, timeout_s=30)
-    cam.update(dict(base, crop_xpos_cam1=x, crop_ypos_cam1=y, crop_width_cam1=w, crop_height_cam1=h))
+    params, led = split_view(view)
+    cam.update(dict(base, **params))
+    if led:
+        cam.light({"off": True})  # lit only around each shot, from here on
     last_layer, last_z, seq, failures, idle_since = None, None, 0, 0, None
     try:
         while True:
@@ -140,7 +157,7 @@ def main():
                 temps = " ".join(f"{hh['current']:.0f}C" for hh in heaters if hh and hh.get("active"))
                 where = f"layer {layer}" if layer is not None else f"z {z}"
                 try:
-                    name, img = grab_with_retry(cam)
+                    name, img = grab_with_retry(cam, led)
                     seq += 1
                     text = f"{where}  {time.strftime('%H:%M:%S')}  {temps}  {status}"
                     cv2.imwrite(os.path.join(frames, frame_name(seq, layer, z, done)), stamp(img.copy(), text))
@@ -154,6 +171,12 @@ def main():
     finally:
         video = make_video(frames, os.path.join(a.out, "timelapse.mp4"), a.fps)
         print("video:", video, flush=True)
+        if led:
+            try:
+                cam.light({"off": True})
+                print("ring off", flush=True)
+            except Exception as e:
+                print("ring off failed:", e, flush=True)
         print("restore SymbolicTM camserver settings:", cam.update(base), flush=True)
         cam.close()
         try:

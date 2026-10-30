@@ -97,7 +97,7 @@ heater, bed-area and height problems. `--port none` forces the Wi-Fi path;
 `--port COM6` names the cable. `--timelapse` with no argument records into
 `<job>/timelapse/`.
 
-**Changing Edwin.** Edit here, run `python -m pytest tests -q` (36 tests,
+**Changing Edwin.** Edit here, run `python -m pytest tests -q` (37 tests,
 about 30 s; the OpenSCAD, PrusaSlicer and Blender ones skip where those
 are missing), commit, push. The parts folder is never touched by git and
 this repo never holds a part, a credential or the home network's name
@@ -114,7 +114,7 @@ this repo never holds a part, a credential or the home network's name
 | `toolchanger.py` | rewrites PrusaSlicer output for one tool and checks it before it goes near the printer |
 | `prusa.py` | PrusaSlicer console slicing and profile patching |
 | `profiles/` | the E3D PrusaSlicer presets Edwin slices a bare STL with (see its README) |
-| `timelapse.py`, `jetson_cam.py` | per-layer frames from Jetson camera 1 into an MP4 |
+| `timelapse.py`, `jetson_cam.py` | per-layer frames from Jetson camera 1 into an MP4; `python jetson_cam.py light off` if the ring is left on |
 | `bed.py`, `calib/` | is the bed clear: a camera 1 picture scored against the empty-bed reference |
 | `cam_preview.py`, `focus_map.py` | camera aiming and focus aids |
 | `tests/` | offline tests against a fake Duet with fault injection; `test_part.py` also drives OpenSCAD, PrusaSlicer and Blender when installed |
@@ -247,7 +247,7 @@ estimate (1:46, 13.3 g) in its own folder.
   line and the timelapse now go by Z, and that a missed camera frame needs
   one retry.
 
-Offline: `python -m pytest tests` (36 tests, about 50 s) covers resets,
+Offline: `python -m pytest tests` (37 tests, about 50 s) covers resets,
 expired sessions, Wi-Fi uploads with dropped connections, USB, the watch
 loop, the job folders, fit and estimate, the timelapse's layer detection,
 and, when the tools are installed, OpenSCAD rendering, slicing with the
@@ -255,5 +255,9 @@ presets and a Blender render.
 
 Not yet done: the `/part` skill driven by a fresh session typing `/part`;
 a brush wipe before the print (the Duet has `macros/wipe.g`, nothing calls
-it); a lamp on the bed for the timelapse. The `printagent` env needs
+it). Lighting: the timelapse and the bed check use `cam1_print_view.json`,
+which since 2026-10-29 flashes the Jetson's read ring (its power switch is
+separate) for each shot, about two seconds a layer with the ring aimed at
+the print, and exposes 100 ms at gain 2 for a dark room; under the flood
+light use 15 ms, gain 1. `python jetson_cam.py light on` keeps it lit. The `printagent` env needs
 `pyzmq`, `opencv-python-headless` and `numpy` for the timelapse.

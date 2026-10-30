@@ -36,18 +36,25 @@ def test_grab_retries_once():
     calls = []
 
     class Cam:
-        def grab(self):
-            calls.append(1)
+        def grab(self, led=None):
+            calls.append(led)
             if len(calls) == 1:
                 raise TimeoutError("frame never arrived")
             return "f", "img"
 
-    assert timelapse.grab_with_retry(Cam()) == ("f", "img")
-    assert len(calls) == 2
+    assert timelapse.grab_with_retry(Cam(), {"lit": 12}) == ("f", "img")
+    assert calls == [{"lit": 12}, {"lit": 12}]  # the ring block rides on every attempt
 
     class Dead:
-        def grab(self):
+        def grab(self, led=None):
             raise TimeoutError("still nothing")
 
     with pytest.raises(TimeoutError):
         timelapse.grab_with_retry(Dead())
+
+
+def test_split_view_separates_the_led_block():
+    view = {"crop_width_cam1": 1600, "exposure_cam1": 250000, "led": {"lit": 12, "level": 1.0}}
+    params, led = timelapse.split_view(view)
+    assert params == {"crop_width_cam1": 1600, "exposure_cam1": 250000} and led == {"lit": 12, "level": 1.0}
+    assert timelapse.split_view({"exposure_cam1": 15000}) == ({"exposure_cam1": 15000}, None)

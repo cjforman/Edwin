@@ -2,8 +2,9 @@
 reference picture taken when the bed was known to be empty.
 
 The printer is homed first (the head parks at X150 Y-49, out of the bed
-area), camera 1 is set to the print crop (cam1_print_crop.json, the same
-view the timelapse uses), one frame is grabbed and SymbolicTM's camera
+area), camera 1 is set to the print view (cam1_print_view.json: crop, exposure,
+gain and frame rate, the same settings the timelapse uses, and the read
+ring flashed on for the shot if the view says so), one frame is grabbed and SymbolicTM's camera
 settings are restored. The frame and the reference are compared inside
 the bed polygon (calib/cam1_bed_mask.json, in crop pixels): grey, shrunk,
 blurred, each normalised to zero mean and unit spread so a change of
@@ -25,36 +26,44 @@ import time
 import cv2
 import numpy as np
 
+from timelapse import split_view
+
 HERE = os.path.dirname(os.path.abspath(__file__))
 CALIB = os.path.join(HERE, "calib")
 REFERENCE = os.path.join(CALIB, "cam1_bed_empty.jpg")
 MASK = os.path.join(CALIB, "cam1_bed_mask.json")
-CROP = os.path.join(HERE, "cam1_print_crop.json")
+VIEW = os.path.join(HERE, "cam1_print_view.json")
 BASE = os.path.join(HERE, "imagingParams_symbolictm.json")
 THRESHOLD = 0.03   # fraction of bed pixels that differ; see the docstring
 SIZE = (400, 300)  # comparison resolution
 
 
-def snapshot(out, crop_path=CROP, base_path=BASE):
+def snapshot(out, view_path=VIEW, base_path=BASE):
     """Grab one frame of the bed from camera 1 into `out` (jpg) and restore the camera settings."""
     import jetson_cam
     with open(base_path) as f:
         base = json.load(f)
-    with open(crop_path) as f:
-        crop = json.load(f)
+    with open(view_path) as f:
+        view = json.load(f)
+    params, led = split_view(view)
     cam = jetson_cam.JetsonCam(cam=1, timeout_s=30)
     try:
-        cam.update(dict(base, **crop))
+        cam.update(dict(base, **params))
         err = None
         for _ in range(2):  # a dead puller elsewhere steals alternate frames
             try:
-                _, img = cam.grab()
+                _, img = cam.grab(led=led)  # the ring flashes on for the shot
                 break
             except Exception as e:
                 err, img = e, None
         if img is None:
             raise err
     finally:
+        try:
+            if led:
+                cam.light({"off": True})
+        except Exception:
+            pass
         try:
             cam.update(base)
         finally:
