@@ -58,3 +58,10 @@ def test_split_view_separates_the_led_block():
     params, led = timelapse.split_view(view)
     assert params == {"crop_width_cam1": 1600, "exposure_cam1": 250000} and led == {"lit": 12, "level": 1.0}
     assert timelapse.split_view({"exposure_cam1": 15000}) == ({"exposure_cam1": 15000}, None)
+
+
+def test_next_seq_continues_after_existing_frames(tmp_path):
+    assert timelapse.next_seq(str(tmp_path)) == 0
+    for name in ("layer_0001_z005.00.jpg", "layer_0017_z003.55.jpg", "layer_9999_final.jpg", "layer_003.jpg"):
+        (tmp_path / name).write_bytes(b"x")
+    assert timelapse.next_seq(str(tmp_path)) == 17

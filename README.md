@@ -259,5 +259,13 @@ it). Lighting: the timelapse and the bed check use `cam1_print_view.json`,
 which since 2026-10-29 flashes the Jetson's read ring (its power switch is
 separate) for each shot, about two seconds a layer with the ring aimed at
 the print, and exposes 100 ms at gain 2 for a dark room; under the flood
-light use 15 ms, gain 1. `python jetson_cam.py light on` keeps it lit. The `printagent` env needs
+light use 15 ms, gain 1. `python jetson_cam.py light on` keeps it lit.
+Found on 2026-10-29 evening: the ring must sit on the frame, not on the
+bed (the bed drops as the print grows) and just outside the camera's
+view, or it flares; lit from the front left it gives the bed about 40
+of 255 and the parts about 70. The Jetson acknowledges ring commands
+whether or not the ring has power, so check by eye once. A timelapse
+restarted into the same folder continues the frame numbering and makes
+one MP4 of the whole set; stopping one by killing it leaves a dead
+puller on the Jetson that steals alternate frames for twenty minutes. The `printagent` env needs
 `pyzmq`, `opencv-python-headless` and `numpy` for the timelapse.

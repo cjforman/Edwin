@@ -83,6 +83,18 @@ def split_view(view):
     return params, view.get("led")
 
 
+def next_seq(frames_dir):
+    """Continue numbering after the frames already there, so a restarted timelapse adds to the set."""
+    seqs = []
+    for p in glob.glob(os.path.join(frames_dir, "layer_*.jpg")):
+        try:
+            seqs.append(int(os.path.basename(p).split("_")[1]))
+        except ValueError:
+            pass
+    seqs = [s for s in seqs if s < 9999]
+    return max(seqs) if seqs else 0
+
+
 def z_of(axes):
     return next((a.get("userPosition") for a in axes if a and a.get("letter") == "Z"), None)
 
@@ -123,7 +135,9 @@ def main():
     cam.update(dict(base, **params))
     if led:
         cam.light({"off": True})  # lit only around each shot, from here on
-    last_layer, last_z, seq, failures, idle_since = None, None, 0, 0, None
+    last_layer, last_z, seq, failures, idle_since = None, None, next_seq(frames), 0, None
+    if seq:
+        print(f"continuing after {seq} existing frames", flush=True)
     try:
         while True:
             try:
@@ -150,7 +164,7 @@ def main():
             layer = job.get("layer")
             processing = status == "processing"
             idle_since = None if processing else (idle_since or time.time())
-            done = not processing and (seq > 0 or time.time() - idle_since > a.idle_end)
+            done = not processing and (last_z is not None or time.time() - idle_since > a.idle_end)
             if done:
                 layer, z = last_layer, (z if z is not None else last_z)
             if done or (processing and layer_changed(layer, last_layer, z, last_z)):
