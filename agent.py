@@ -305,6 +305,23 @@ def heat_off(d, tool):
     log(f"heaters off: T{tool} and bed (print did not complete at night)")
 
 
+def job_outcome(final, p):
+    """What became of the job, from job_progress() read once the printer has stopped.
+
+    RRF 3.5.4's object model has no lastFileCancelled or lastFileAborted. All
+    it keeps is job.lastDuration: GCodes::StopPrint sets it to the print time
+    on a normal finish and to 0 on a cancel or abort, which it does not tell
+    apart. A Duet that restarted also says 0, but has no lastFileName. Only a
+    positive record counts as "completed", so a missing one is never a success.
+    """
+    if final in ("off", "halted"):
+        return f"stopped by the firmware (printer {final}: heater fault, emergency stop or power)"
+    seconds = p.get("last_duration")
+    if seconds is None or not p.get("last_file"):
+        return "outcome unknown (the Duet has no record of how the job ended: restarted?)"
+    return "completed" if seconds > 0 else "cancelled"
+
+
 def print_job(d, path, tool, port, verify, start, timelapse_dir=None, poll=3.0, job=None, bed_clear=False):
     path, summary = prepared_gcode(path, tool, job)
     log("checked: " + json.dumps(summary))
@@ -343,14 +360,7 @@ def print_job(d, path, tool, port, verify, start, timelapse_dir=None, poll=3.0, 
     finally:
         finish_timelapse(proc)
     p = d.job_progress()
-    if final in ("off", "halted"):
-        outcome = f"stopped by the firmware (printer {final}: heater fault, emergency stop or power)"
-    elif p.get("last_cancelled"):
-        outcome = "cancelled"
-    elif p.get("last_aborted"):
-        outcome = "aborted"
-    else:
-        outcome = "completed"
+    outcome = job_outcome(final, p)
     heaters = d.model("heat.heaters", "d99vn")
     faults = [i for i, h in enumerate(heaters) if h and h.get("state") == "fault"]
     if faults:

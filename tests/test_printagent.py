@@ -194,8 +194,7 @@ class Handler(http.server.BaseHTTPRequestHandler):
                         "layer": 1 + s.job_pos * 10 // max(size, 1), "duration": 12, "timesLeft": {"file": 100},
                         "lastFileName": None}
             return {"file": None, "filePosition": 0, "layer": None, "duration": None, "timesLeft": {},
-                    "lastFileName": "0:/gcodes/done.gcode", "lastFileAborted": getattr(s, "aborted", False),
-                    "lastFileCancelled": False}
+                    "lastFileName": "0:/gcodes/done.gcode", "lastDuration": 0 if getattr(s, "aborted", False) else 2460}
         return None
 
     def gcode(self, code):
@@ -494,3 +493,41 @@ def test_watch_follows_job_to_the_end(fake, sample, monkeypatch):
     final = agent.watch(d, poll=0, sleep=sleep)
     assert final == "idle"
     assert d.stats["retries"] >= 1
+
+
+def run_job_paused_then_ended(fake, sample, monkeypatch, tmp_path, aborted):
+    monkeypatch.setattr(time, "sleep", lambda s: None)
+    monkeypatch.setattr(duet_usb, "find_port", lambda: None)
+    monkeypatch.setattr(agent, "bed_check", lambda job, skip=False: {"clear": True})
+    real_watch, ticks = agent.watch, {"n": 0}
+
+    def sleep(s):
+        ticks["n"] += 1
+        if ticks["n"] == 1:
+            fake.status = "paused"
+        if ticks["n"] == 2:
+            fake.status, fake.job_file, fake.aborted = "idle", None, aborted
+
+    monkeypatch.setattr(agent, "watch", lambda d, poll=3.0: real_watch(d, poll=0, sleep=sleep))
+    return agent.print_job(client(fake), sample, 2, "auto", "size", True, None, 0, job=str(tmp_path))
+
+
+def test_cancelled_job_is_reported_cancelled(fake, sample, monkeypatch, tmp_path, capsys):
+    # 2026-11-02: M0 on a paused job, and the watcher logged "completed" and exited 0
+    assert run_job_paused_then_ended(fake, sample, monkeypatch, tmp_path, aborted=True) == 1
+    out = capsys.readouterr().out
+    assert "done.gcode cancelled; printer idle" in out and "completed" not in out
+
+
+def test_finished_job_is_reported_completed(fake, sample, monkeypatch, tmp_path, capsys):
+    assert run_job_paused_then_ended(fake, sample, monkeypatch, tmp_path, aborted=False) == 0
+    assert "done.gcode completed; printer idle" in capsys.readouterr().out
+
+
+def test_job_outcome_wants_a_positive_record():
+    last = "0:/gcodes/part.gcode"
+    assert agent.job_outcome("idle", {"last_file": last, "last_duration": 2460}) == "completed"
+    assert agent.job_outcome("idle", {"last_file": last, "last_duration": 0}) == "cancelled"
+    assert agent.job_outcome("idle", {"last_file": None, "last_duration": 0}).startswith("outcome unknown")
+    assert agent.job_outcome("idle", {"last_file": last, "last_duration": None}).startswith("outcome unknown")
+    assert agent.job_outcome("halted", {"last_file": last, "last_duration": 2460}).startswith("stopped by the firmware")

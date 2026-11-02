@@ -245,8 +245,8 @@ class Duet:
             "duration": job.get("duration"),
             "time_left": (job.get("timesLeft") or {}).get("file"),
             "last_file": job.get("lastFileName"),
-            "last_aborted": job.get("lastFileAborted"),
-            "last_cancelled": job.get("lastFileCancelled"),
+            # RRF only: print seconds after a normal finish, 0 after any other stop, None while printing
+            "last_duration": job.get("lastDuration"),
         }
 
     def fileinfo(self, remote):

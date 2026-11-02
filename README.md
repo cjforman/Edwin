@@ -100,7 +100,7 @@ heater, bed-area and height problems. `--port none` forces the Wi-Fi path;
 `--port COM6` names the cable. `--timelapse` with no argument records into
 `<job>/timelapse/`.
 
-**Changing Edwin.** Edit here, run `python -m pytest tests -q` (47 tests,
+**Changing Edwin.** Edit here, run `python -m pytest tests -q` (50 tests,
 about 30 s; the OpenSCAD, PrusaSlicer and Blender ones skip where those
 are missing), commit, push. The parts folder is never touched by git and
 this repo never holds a part, a credential or the home network's name
@@ -278,7 +278,15 @@ estimate (1:46, 13.3 g) in its own folder.
   the Duet's `macros/wipe.g` (X300..341.5 at Y167.4) without its purge,
   servo and fan steps (`toolchanger.brush_wipe`).
 
-Offline: `python -m pytest tests` (47 tests, about 50 s) covers resets,
+* 2026-11-02, the outcome line. A job cancelled with `M0` was logged as
+  "completed", exit 0: RRF 3.5.4 has no `lastFileCancelled` or
+  `lastFileAborted`, so that test never fired. `agent.job_outcome` now reads
+  `job.lastDuration`, the print time after a normal finish and 0 after a
+  cancel or abort (GCodes::StopPrint). The cancelled side was read off the
+  printer; the completed side is from the 3.5.4 source and awaits a finished
+  print.
+
+Offline: `python -m pytest tests` (50 tests, about 50 s) covers resets,
 expired sessions, Wi-Fi uploads with dropped connections, USB, the watch
 loop, the job folders, fit and estimate, the timelapse's layer detection,
 the park check, the night heat-off, the brush wipe, and, when the tools are installed, OpenSCAD rendering,
