@@ -94,13 +94,13 @@ empty and the printer homed; `--bed-clear` skips the check; without a
 reference or a camera the check is logged and the print goes on).
 `python agent.py HOST home` homes on its own. A G-code file from the E3D
 profile is rewritten as `<name>.T<tool>.gcode` (camera tool parked, print
-tool heated, picked and wiped four passes over the wire brush, parked
-again at the end) and checked for tool,
+tool heated, picked and wiped four passes over the wire brush, the height
+map loaded after that, parked again at the end) and checked for tool,
 heater, bed-area and height problems. `--port none` forces the Wi-Fi path;
 `--port COM6` names the cable. `--timelapse` with no argument records into
 `<job>/timelapse/`.
 
-**Changing Edwin.** Edit here, run `python -m pytest tests -q` (50 tests,
+**Changing Edwin.** Edit here, run `python -m pytest tests -q` (55 tests,
 about 30 s; the OpenSCAD, PrusaSlicer and Blender ones skip where those
 are missing), commit, push. The parts folder is never touched by git and
 this repo never holds a part, a credential or the home network's name
@@ -278,6 +278,18 @@ estimate (1:46, 13.3 g) in its own folder.
   the Duet's `macros/wipe.g` (X300..341.5 at Y167.4) without its purge,
   servo and fan steps (`toolchanger.brush_wipe`).
 
+* 2026-11-02, mesh bed compensation. Found with a print running: the
+  start G-code loaded the height map (`G29 S1`) before picking up the
+  tool, and `tpre2.g` runs `M561`, which clears it, so every print so far
+  ran with `move.compensation.type` "none". The map is now loaded after
+  the tool change and the brush wipe, `toolchanger.check` refuses G-code
+  that extrudes without a `G29 S1` after its last tool change, and
+  `watch` reads the compensation type at the first layer and cancels the
+  print (`M0`) if two polls say "none". Owner rule: a height map older
+  than four months (`heightmap.csv` was from 2026-04-13) is probed again
+  before the print (`G29` on the M557 grid, carriage with no tool, after
+  the bed check; `agent.mesh_check`, `duet.probe_mesh`).
+
 * 2026-11-02, the outcome line. A job cancelled with `M0` was logged as
   "completed", exit 0: RRF 3.5.4 has no `lastFileCancelled` or
   `lastFileAborted`, so that test never fired. `agent.job_outcome` now reads
@@ -286,10 +298,10 @@ estimate (1:46, 13.3 g) in its own folder.
   printer; the completed side is from the 3.5.4 source and awaits a finished
   print.
 
-Offline: `python -m pytest tests` (50 tests, about 50 s) covers resets,
+Offline: `python -m pytest tests` (55 tests, about 50 s) covers resets,
 expired sessions, Wi-Fi uploads with dropped connections, USB, the watch
 loop, the job folders, fit and estimate, the timelapse's layer detection,
-the park check, the night heat-off, the brush wipe, and, when the tools are installed, OpenSCAD rendering,
+the park check, the night heat-off, the brush wipe, the mesh rules, and, when the tools are installed, OpenSCAD rendering,
 slicing with the presets and a Blender render.
 
 Not yet done: the `/part` skill driven by a fresh session typing `/part`.

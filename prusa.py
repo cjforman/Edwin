@@ -27,10 +27,10 @@ def toolchanger_gcode(tool):
         "M190 S[first_layer_bed_temperature] ; bed",
         f"G10 P{tool} S[first_layer_temperature] R[first_layer_temperature] ; preheat T{tool} in its dock",
         "G28 ; home all axes, no tool attached",
-        "G29 S1 ; load the stored height map",
         f"T{tool} ; pick up the print tool",
         f"M116 P{tool} ; wait for T{tool}",
         *toolchanger.brush_wipe(),
+        toolchanger.MESH_LOAD,
         "G1 Z5 F5000 ; lift nozzle",
     ])
     end = "\n".join([

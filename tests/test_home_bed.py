@@ -117,7 +117,7 @@ def test_park_check_refuses_a_tall_part_when_the_macro_cannot_be_read(fake):
 
 def test_end_gcode_turns_the_heater_off_before_parking():
     import toolchanger
-    raw = "G10 S220 P0" + chr(10) + "M116" + chr(10) + "T2" + chr(10) + "G1 X1 Y1 E1" + chr(10) + "M104 S0" + chr(10) + "G28 X0"
+    raw = "G10 S220 P0" + chr(10) + "T2" + chr(10) + "M116" + chr(10) + "G1 X1 Y1 E1" + chr(10) + "M104 S0" + chr(10) + "G28 X0"
     lines = [ln.split(";")[0].strip() for ln in toolchanger.prepare(raw, 2).splitlines()]
     assert lines.index("G10 P2 S0 R0") < lines.index("T-1", 1)
     assert toolchanger.check(toolchanger.prepare(raw, 2), 2)[0] == []
@@ -164,7 +164,7 @@ def test_a_completed_print_sends_no_extra_heat_off(fake, sample, monkeypatch, tm
 def test_start_gcode_wipes_the_brush_after_the_tool_is_hot():
     import prusa
     import toolchanger
-    raw = "G10 S220 P0" + chr(10) + "M116" + chr(10) + "T2" + chr(10) + "G1 X1 Y1 E1" + chr(10) + "M104 S0"
+    raw = "G10 S220 P0" + chr(10) + "T2" + chr(10) + "M116" + chr(10) + "G1 X1 Y1 E1" + chr(10) + "M104 S0"
     lines = [ln.split(";")[0].strip() for ln in toolchanger.prepare(raw, 2).splitlines()]
     i = lines.index("M116 P2")
     assert lines[i + 1] == "G1 X300 Y167.4 F10000"
@@ -172,3 +172,65 @@ def test_start_gcode_wipes_the_brush_after_the_tool_is_hot():
     assert toolchanger.check(toolchanger.prepare(raw, 2), 2)[0] == []
     start = prusa.toolchanger_gcode(2)["start_gcode"]
     assert start.index("M116 P2") < start.index("G1 X341.5") < start.index("G1 Z5 F5000")
+
+
+def test_check_wants_the_mesh_loaded_after_the_tool_change():
+    import toolchanger
+    raw = "G10 S220 P0" + chr(10) + "G29 S1" + chr(10) + "T2" + chr(10) + "M116" + chr(10) + "G1 X1 Y1 E1" + chr(10) + "M104 S0"
+    text = toolchanger.prepare(raw, 2)
+    lines = [ln.split(";")[0].strip() for ln in text.splitlines()]
+    assert lines.index("T2") < lines.index("G29 S1") < lines.index("G1 X1 Y1 E1")
+    assert lines.count("G29 S1") == 1  # the sliced one is removed
+    problems, summary = toolchanger.check(text, 2)
+    assert problems == [] and summary["mesh"] is True
+    early = text.replace("G29 S1 ;", "; G29 S1").replace("G10 P2 S220 R220 ;", "G29 S1" + chr(10) + "G10 P2 S220 R220 ;")
+    problems, _ = toolchanger.check(early, 2)
+    assert any("without the height map loaded after T2" in p for p in problems)
+
+
+def test_mesh_check_probes_again_when_the_map_is_four_months_old(fake, monkeypatch):
+    import datetime
+    monkeypatch.setattr(time, "sleep", lambda s: None)
+    fake.files["0:/sys/heightmap.csv"] = b"old"
+    fake.dates = {"0:/sys/heightmap.csv": "2026-04-13T00:41:00"}
+    now = datetime.datetime(2026, 11, 2, 12, 0)
+    d = client(fake)
+    r = agent.mesh_check(d, start=False, now=now)
+    assert r["reprobed"] is False and r["age_days"] == 203 and "G29" not in fake.gcode_log
+    r = agent.mesh_check(d, start=True, now=now)
+    assert r["reprobed"] is True and "G29" in fake.gcode_log and r["probed"].startswith("2026-11-02")
+    fake.gcode_log.clear()
+    assert agent.mesh_check(d, start=True, now=now)["reprobed"] is False and "G29" not in fake.gcode_log
+
+
+def test_mesh_check_refuses_to_probe_with_a_tool_on_the_carriage(fake):
+    fake.current_tool = 2
+    with pytest.raises(duet.DuetError, match="T2 is on the carriage"):
+        agent.mesh_check(client(fake), start=True)
+    assert "G29" not in fake.gcode_log
+
+
+def test_watch_cancels_a_print_running_without_the_mesh(fake, sample, monkeypatch):
+    monkeypatch.setattr(duet_usb, "find_port", lambda: None)
+    d = client(fake)
+    d.upload(sample, port="none")
+    d.start("part.gcode")
+    fake.mesh = "none"
+    with pytest.raises(SystemExit, match="mesh bed compensation was off"):
+        agent.watch(d, poll=0, sleep=lambda s: None)
+    assert "M0" in fake.gcode_log
+
+
+def test_watch_is_content_with_the_mesh_on(fake, sample, monkeypatch):
+    monkeypatch.setattr(duet_usb, "find_port", lambda: None)
+    d = client(fake)
+    d.upload(sample, port="none")
+    d.start("part.gcode")
+    polls = []
+
+    def tick(s):
+        polls.append(1)
+        if len(polls) > 3:
+            fake.job_file, fake.status = None, "idle"
+    assert agent.watch(d, poll=0, sleep=tick) == "idle"
+    assert "M0" not in fake.gcode_log

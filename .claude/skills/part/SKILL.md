@@ -84,7 +84,10 @@ whichever the command wants); a path works too.
    the cable is in (else
    Wi-Fi; plug the cable in for anything over a megabyte), starts from the
    SD card (the start G-code wipes the hot nozzle four passes over the
-   wire brush before the first layer), watches to the end and logs to
+   wire brush, then loads the height map, before the first layer; a map
+   older than four months is probed again first, which takes a few
+   minutes; a print found running without the mesh is cancelled), watches
+   to the end and logs to
    `<parts>/NAME/agent_<stamp>.log`. A print that fails between 23:00 and
    08:00 gets its heaters turned off; by day Edwin leaves the heat on and
    says so.

@@ -8,11 +8,14 @@ end turns off "the current tool" and homes X with the tool still attached.
 moves:
 
     T-1               drop off whatever is on the carriage (the camera tool)
-    ...bed heat, G28, G29 S1 as sliced...
+    ...bed heat, G28 as sliced...
     G10 P<t> S R      heat the print tool (active and standby)
     T<t>              pick it up (RRF runs tfree/tpre/tpost)
     M116 P<t>         wait on that tool only
     brush wipe        four passes over the wire brush (brush_wipe)
+    G29 S1            load the height map: AFTER the tool change, because
+                      tpre/tfree run M561, which clears the mesh (found
+                      2026-11-02 with a print running at type "none")
     ...print...
     lift Z 5          clear of the part
     G10 P<t> S0 R0    heater off
@@ -35,6 +38,8 @@ _HEAT_P0 = re.compile(r"^G10 S(\d+(?:\.\d+)?) P0\b.*$")
 # Duet's macros/wipe.g makes (X300..341.5 at Y167.4, tool coordinates). The
 # head moves in X and Y only, so the brush height needs no Z move; after a
 # tool change the bed sits at SafeZ, well below it.
+MESH_LOAD = "G29 S1 ; load the height map (after the tool change: tpre runs M561, which clears it)"
+
 BRUSH_X = (300.0, 341.5)
 BRUSH_Y = 167.4
 BRUSH_PASSES = 4
@@ -68,6 +73,9 @@ def prepare(text, tool):
         elif code == "M116":
             out.append(f"M116 P{tool} ; wait for T{tool}")
             out.extend(brush_wipe())
+            out.append(MESH_LOAD)
+        elif code == "G29 S1":
+            out.append(f"; {line} -- removed: the mesh is loaded after the tool change")
         elif code == "M104 S0":
             out.append("G91\nG1 Z5 F600 ; lift clear of the part\nG90")
             out.append(f"G10 P{tool} S0 R0 ; T{tool} heater off before the park")
@@ -98,6 +106,8 @@ def check(text, tool):
     extruding_moves = 0
     last_tool_cmd = None
     print_temp = None
+    mesh = False            # height map loaded since the last tool change
+    mesh_printing = None    # ...and was it, at the first extruding move
     for n, line in enumerate(text.splitlines(), 1):
         code = line.split(";", 1)[0].strip()
         if not code:
@@ -109,6 +119,11 @@ def check(text, tool):
         if re.fullmatch(r"T-?\d+", cmd):
             current = int(cmd[1:])
             last_tool_cmd = current
+            mesh = False    # tpre/tfree run M561
+        elif cmd == "G29":
+            mesh = w.get("S") == 1
+        elif cmd == "M561":
+            mesh = False
             if current >= 0 and current != tool:
                 problems.append(f"line {n}: selects T{current}, expected only T{tool}")
         elif cmd == "G10" and "P" in w and "S" in w:
@@ -135,6 +150,11 @@ def check(text, tool):
                 if heated.get(tool, 0) < MIN_EXTRUDE_TEMP:
                     problems.append(f"line {n}: extrudes before T{tool} is set above {MIN_EXTRUDE_TEMP:g}C")
                     break
+                if mesh_printing is None:
+                    mesh_printing = mesh
+                if not mesh:
+                    problems.append(f"line {n}: extrudes without the height map loaded after T{tool} (G29 S1)")
+                    break
                 for i, v in enumerate((x, y, z)):
                     if v is not None:
                         lo[i], hi[i] = min(lo[i], v), max(hi[i], v)
@@ -151,6 +171,7 @@ def check(text, tool):
             problems.append(f"print height {hi[2]:.1f} exceeds {MAX_Z:g}")
     summary = {
         "tool": tool,
+        "mesh": mesh_printing,
         "extruding_moves": extruding_moves,
         "x": (lo[0], hi[0]), "y": (lo[1], hi[1]), "z": (lo[2], hi[2]),
         "tool_temp": print_temp,

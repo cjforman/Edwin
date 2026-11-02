@@ -29,6 +29,7 @@ Every command sent to the printer is printed as it goes, and logged to
 <job>/agent_<stamp>.log.
 """
 import argparse
+import datetime
 import json
 import os
 import statistics
@@ -160,13 +161,19 @@ def link_test(d, n=40):
     return r
 
 
+MESH_CHECK_Z = 1.0  # mm: by this Z the job is printing and the height map must be in use
+
+
 def watch(d, poll=3.0, until_started=30.0, report_every=60.0, sleep=time.sleep):
     """Follow the job until it ends.  Returns the final status word.
 
     A Wi-Fi outage is logged and waited out; the print runs from the SD card.
+    At the first layer the mesh compensation is checked once (two polls in a
+    row reading "none" cancel the print with M0).
     """
     t0 = time.time()
     last_key, t_last, started, bad = None, 0.0, False, 0
+    mesh_seen, mesh_off = False, 0
     while True:
         try:
             p = d.job_progress()
@@ -179,6 +186,20 @@ def watch(d, poll=3.0, until_started=30.0, report_every=60.0, sleep=time.sleep):
         st = p["status"]
         if st in ACTIVE:
             started = True
+            if not mesh_seen and st == "processing" and (p.get("z") or 99) <= MESH_CHECK_Z:
+                # first layer: the start G-code's G29 S1 has run by now
+                m = d.mesh()
+                if m["type"] == "mesh":
+                    mesh_seen = True
+                    log(f"mesh compensation on ({m['file'] or 'height map'})")
+                else:
+                    mesh_off += 1
+                    if mesh_off >= 2:
+                        log("MESH COMPENSATION OFF at the first layer: cancelling the print (M0)")
+                        d.gcode("M0", wait_reply=2.0)
+                        raise SystemExit("print cancelled: mesh bed compensation was off at the first layer "
+                                         f"(move.compensation.type {m['type']!r}); the start G-code must load it "
+                                         "after the tool change (G29 S1)")
         key = (st, p["layer"], int(100 * (p["fraction"] or 0)))
         if key != last_key or time.time() - t_last > report_every:
             # RRF counts layers only when the file kept its comments (Wi-Fi upload); after a USB upload report Z
@@ -289,6 +310,30 @@ def park_check(d, tool, max_z):
 
 
 NIGHT = (23, 8)  # hours: a failed print between these turns the heaters off
+MESH_MAX_AGE_DAYS = 122  # four months: older, and the bed is probed again before the print
+
+
+def mesh_check(d, start, max_age_days=MESH_MAX_AGE_DAYS, now=None):
+    """Probe the bed again (G29) if the height map is missing or older than four months.
+
+    Owner rule 2026-11-02. The start G-code loads the map after the tool
+    change (tpre runs M561, which clears it), and watch() cancels a print
+    found running without it.
+    """
+    probed = d.heightmap_date()
+    now = now or datetime.datetime.now()
+    age = (now - probed).days if probed else None
+    if probed and age <= max_age_days:
+        log(f"height map probed {probed:%Y-%m-%d}, {age} days old: kept")
+        return {"probed": probed.isoformat(), "age_days": age, "reprobed": False}
+    why = "no height map" if probed is None else f"height map probed {probed:%Y-%m-%d}, {age} days old"
+    if not start:
+        log(f"{why}: the print would probe the bed again first (G29)")
+        return {"probed": probed.isoformat() if probed else None, "age_days": age, "reprobed": False}
+    log(f"{why}: probing the bed again (G29, the carriage with no tool, M557 grid)")
+    r = d.probe_mesh()
+    log(f"probed: {json.dumps(r)}")
+    return {"probed": r["probed"], "age_days": 0, "reprobed": True}
 
 
 def at_night(now=None):
@@ -332,6 +377,7 @@ def print_job(d, path, tool, port, verify, start, timelapse_dir=None, poll=3.0, 
     log("park check: " + json.dumps(park_check(d, tool, summary["z"][1])))
     if start:
         bed_check(job, skip=bed_clear)
+    log("mesh: " + json.dumps(mesh_check(d, start)))
     name = os.path.basename(path)
 
     def progress(i, n, s):

@@ -29,6 +29,7 @@ G10 P2 S210 R210 ; heat
 G28
 T2
 M116 P2
+G29 S1
 G90
 G1 Z0.3 F600
 """ + "\n".join(f"G1 X{10 + i % 50}.5 Y{20 + i % 40}.25 E{0.05 * i:.4f} F1200 ; seg {i}" for i in range(400)) + """
@@ -115,7 +116,8 @@ class Handler(http.server.BaseHTTPRequestHandler):
             if u.path == "/rr_fileinfo":
                 name = q["name"]
                 if name in s.files:
-                    return self._json({"err": 0, "fileName": name, "size": len(s.files[name])})
+                    return self._json({"err": 0, "fileName": name, "size": len(s.files[name]),
+                                       "lastModified": getattr(s, "dates", {}).get(name)})
                 return self._json({"err": 1})
             if u.path == "/rr_download":
                 data = s.files.get(q["name"])
@@ -184,6 +186,8 @@ class Handler(http.server.BaseHTTPRequestHandler):
             return [{"letter": a, "homed": s.homed, "userPosition": 0.35 if a == "Z" else 100.0} for a in "XYZ"]
         if key == "heat.heaters":
             return [{"current": 25.0, "active": 0, "state": "off"}]
+        if key == "move.compensation":
+            return {"type": getattr(s, "mesh", "mesh"), "file": "0:/sys/heightmap.csv"}
         if key == "tools":
             return [{"number": 0, "name": "cam", "heaters": [], "active": [], "standby": []},
                     {"number": 2, "name": "T2", "heaters": [2], "active": [0], "standby": [0]}]
@@ -232,6 +236,12 @@ class Handler(http.server.BaseHTTPRequestHandler):
                     s.current_tool = -1
                 elif cmd == "echo":
                     s.replies.append(str(getattr(s, "safe_z", 65.0)))
+                elif ln.strip() == "G29":  # probe: a fresh height map
+                    s.files["0:/sys/heightmap.csv"] = b"RepRapFirmware height map file v2\n"
+                    s.dates = dict(getattr(s, "dates", {}), **{"0:/sys/heightmap.csv": "2026-11-02T10:00:00"})
+                    s.mesh = "mesh"
+                elif cmd == "M0":
+                    s.job_file, s.status = None, "idle"
         for i, (sub, times) in enumerate(list(s.fail_after_apply)):
             if times > 0 and applied and sub in code:
                 s.fail_after_apply[i] = (sub, times - 1)

@@ -47,6 +47,7 @@ CLI (see agent.py for the full pipeline):
 """
 import argparse
 import http.client
+import datetime
 import json
 import os
 import random
@@ -471,6 +472,38 @@ class Duet:
                 return st["homed"]
             time.sleep(poll)
         raise DuetError(f"not homed {timeout} s after G28: {st['homed']} ({st['status']})")
+
+    def mesh(self):
+        """{"type": "mesh"|"none", "file": ...} from move.compensation."""
+        c = self.model("move.compensation", "v") or {}
+        return {"type": c.get("type"), "file": c.get("file")}
+
+    def heightmap_date(self, path="0:/sys/heightmap.csv"):
+        """When the height map was probed (datetime), or None without one."""
+        info = self.fileinfo(path)
+        if info.get("err", 0) != 0 or not info.get("lastModified"):
+            return None
+        return datetime.datetime.fromisoformat(info["lastModified"])
+
+    def probe_mesh(self, timeout=900, poll=3.0):
+        """G29: probe the bed grid (M557) and save/load the height map. Needs an idle, homed
+        printer with no tool on the carriage (the probe is the nozzle-less carriage)."""
+        st = self.status()
+        if st["status"] != "idle":
+            raise DuetError(f"not probing: printer is {st['status']}")
+        if not all(st["homed"].get(a) for a in "XYZ"):
+            raise DuetError(f"not probing: not homed {st['homed']}")
+        if st.get("current_tool") not in (None, -1):
+            raise DuetError(f"T{st['current_tool']} is on the carriage: not probing (home/probe without a tool)")
+        before = self.heightmap_date()
+        self.gcode("G29", wait_reply=2.0)
+        t0 = time.time()
+        time.sleep(poll)
+        self.wait_idle(timeout=timeout, poll=poll)
+        after = self.heightmap_date()
+        if after is None or after == before:
+            raise DuetError(f"G29 finished in {time.time() - t0:.0f} s but heightmap.csv was not rewritten (still {before})")
+        return {"probed": after.isoformat(), "seconds": round(time.time() - t0), "mesh": self.mesh()}
 
     def safe_z(self):
         """global.SafeZ: the machine Z the tool-change and homing macros move the bed to, or None."""

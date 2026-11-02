@@ -29,6 +29,7 @@ T-1 ; drop off
 G10 P2 S220 R220
 T2
 M116 P2
+G29 S1
 G90
 ;LAYER_CHANGE
 G1 X10 Y10 E1 F1200
@@ -171,7 +172,7 @@ def test_slice_a_scad_with_the_profiles(tmp_path):
 @needs_blender
 def test_render_blender_a_small_square(tmp_path):
     g = tmp_path / "sq.T2.gcode"
-    lines = ["T-1", "G10 P2 S220 R220", "T2", "M116 P2", "G90", "M82"]
+    lines = ["T-1", "G10 P2 S220 R220", "T2", "M116 P2", "G29 S1", "G90", "M82"]
     e = 0.0
     for z in (0.35, 0.55, 0.75):
         lines.append(f"G1 Z{z} F600")
