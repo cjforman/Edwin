@@ -472,6 +472,21 @@ class Duet:
             time.sleep(poll)
         raise DuetError(f"not homed {timeout} s after G28: {st['homed']} ({st['status']})")
 
+    def safe_z(self):
+        """global.SafeZ: the machine Z the tool-change and homing macros move the bed to, or None."""
+        reply = self.gcode("echo global.SafeZ", wait_reply=1.0)
+        try:
+            return float(str(reply).strip().splitlines()[-1])
+        except (ValueError, IndexError):
+            return None
+
+    def park_guarded(self, tool):
+        """True if sys/tfree<tool>.g only moves to SafeZ when the bed is closer than it (PARK_GUARD)."""
+        text = self.download(f"0:/sys/tfree{tool}.g")
+        if isinstance(text, bytes):
+            text = text.decode("utf-8", "replace")
+        return PARK_GUARD in text
+
     def start(self, name):
         st = self.status()
         if st["status"] != "idle":
@@ -484,6 +499,14 @@ class Duet:
                 return reply
             time.sleep(1)
         raise DuetError(f"M32 sent but the printer did not start processing (reply {str(reply)[:120]!r})")
+
+
+# The tool-change macros (sys/tfree<n>.g, tpre<n>.g) move the bed to
+# global.SafeZ (65 mm) before docking. Unguarded, that raises a taller part
+# into the hot nozzle: the 179 mm recorder_set was crushed that way at its
+# end-of-print park on 2026-10-30. The guarded macros (3DParts/duet_sys/
+# guarded_20261030) wrap the move in this condition.
+PARK_GUARD = "if move.axes[2].machinePosition < global.SafeZ"
 
 
 def preflight(st, tool):

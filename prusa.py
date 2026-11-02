@@ -34,8 +34,8 @@ def toolchanger_gcode(tool):
         "G91",
         "G1 Z5 F600 ; lift clear of the part",
         "G90",
-        "T-1 ; park the print tool",
-        f"G10 P{tool} S0 R0 ; T{tool} heater off",
+        f"G10 P{tool} S0 R0 ; T{tool} heater off before the park",
+        "T-1 ; park the print tool (tfree moves the bed to SafeZ only if it is closer: see agent.park_check)",
         "M140 S0 ; bed off",
         "M84 ; disable motors",
     ])

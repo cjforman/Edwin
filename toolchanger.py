@@ -13,8 +13,10 @@ moves:
     T<t>              pick it up (RRF runs tfree/tpre/tpost)
     M116 P<t>         wait on that tool only
     ...print...
-    lift Z 5, T-1     park the print tool clear of the part
-    G10 P<t> S0 R0    and turn its heater off
+    lift Z 5          clear of the part
+    G10 P<t> S0 R0    heater off
+    T-1               park the print tool (tfree<t>.g: its move to SafeZ must
+                      be guarded for parts taller than SafeZ, agent.park_check)
 
 ``check`` then proves the result is what we think it is before it goes near
 the printer.
@@ -48,8 +50,8 @@ def prepare(text, tool):
             out.append(f"M116 P{tool} ; wait for T{tool}")
         elif code == "M104 S0":
             out.append("G91\nG1 Z5 F600 ; lift clear of the part\nG90")
+            out.append(f"G10 P{tool} S0 R0 ; T{tool} heater off before the park")
             out.append("T-1 ; park the print tool")
-            out.append(f"G10 P{tool} S0 R0 ; T{tool} heater off")
         elif code == "G28 X0":
             out.append(f"; {line} -- removed: parking replaces it")
         else:

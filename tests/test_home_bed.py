@@ -83,3 +83,41 @@ def test_bed_score_sees_an_object_but_not_a_change_of_light():
     with_cube[700:950, 650:900] = 200  # a bright block on the bed
     assert bed.score(darker, empty) < 0.01
     assert bed.score(with_cube, empty) > bed.THRESHOLD
+
+
+UNGUARDED_TFREE = ";Drop the bed\nM561\nG90\nG53 G1 Z{global.SafeZ} F1200\n;Move In\nG53 G1 X212.5 Y100 F50000\n"
+GUARDED_TFREE = UNGUARDED_TFREE.replace("G53 G1 Z{global.SafeZ} F1200",
+                                        duet.PARK_GUARD + "\n  G53 G1 Z{global.SafeZ} F1200")
+
+
+def test_park_check_refuses_a_tall_part_with_the_unguarded_macro(fake):
+    fake.files["0:/sys/tfree2.g"] = UNGUARDED_TFREE.encode()
+    d = client(fake)
+    with pytest.raises(SystemExit, match="179.2 mm tall .* SafeZ 65.0 mm"):
+        agent.park_check(d, 2, 179.15)
+    assert "echo global.SafeZ" in fake.gcode_log
+
+
+def test_park_check_passes_a_short_part_or_a_guarded_macro(fake):
+    fake.files["0:/sys/tfree2.g"] = UNGUARDED_TFREE.encode()
+    d = client(fake)
+    r = agent.park_check(d, 2, 30.0)
+    assert r == {"max_z": 30.0, "safe_z": 65.0, "park_guarded": False, "tall": False}
+    assert agent.park_check(d, 2, 59.0)["tall"] is False
+    fake.files["0:/sys/tfree2.g"] = GUARDED_TFREE.encode()
+    assert agent.park_check(d, 2, 179.15) == {"max_z": 179.15, "safe_z": 65.0, "park_guarded": True, "tall": True}
+
+
+def test_park_check_refuses_a_tall_part_when_the_macro_cannot_be_read(fake):
+    d = client(fake)  # no sys/tfree2.g on the fake
+    with pytest.raises(SystemExit, match="could not be checked"):
+        agent.park_check(d, 2, 100.0)
+    assert agent.park_check(d, 2, 30.0)["park_guarded"] is None
+
+
+def test_end_gcode_turns_the_heater_off_before_parking():
+    import toolchanger
+    raw = "G10 S220 P0" + chr(10) + "M116" + chr(10) + "T2" + chr(10) + "G1 X1 Y1 E1" + chr(10) + "M104 S0" + chr(10) + "G28 X0"
+    lines = [ln.split(";")[0].strip() for ln in toolchanger.prepare(raw, 2).splitlines()]
+    assert lines.index("G10 P2 S0 R0") < lines.index("T-1", 1)
+    assert toolchanger.check(toolchanger.prepare(raw, 2), 2)[0] == []

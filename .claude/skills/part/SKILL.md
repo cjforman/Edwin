@@ -78,7 +78,10 @@ whichever the command wants); a path works too.
    on the carriage: say so and stop), pictures the bed and stops if it
    differs from the empty-bed reference (look at `<parts>/NAME/bed_before.jpg`,
    show it, and rerun with `--bed-clear` only if the user agrees it is
-   clear), checks it has T2, uploads over USB when the cable is in (else
+   clear), checks it has T2, refuses a part taller than the Duet's SafeZ
+   (65 mm) unless the guarded tool-park macro is on the Duet (the park
+   would crush it: say so, do not work around it), uploads over USB when
+   the cable is in (else
    Wi-Fi; plug the cable in for anything over a megabyte), starts from the
    SD card, watches to the end and logs to `<parts>/NAME/agent_<stamp>.log`.
 

@@ -230,6 +230,8 @@ class Handler(http.server.BaseHTTPRequestHandler):
                     s.homed = True
                 elif cmd == "T-1":
                     s.current_tool = -1
+                elif cmd == "echo":
+                    s.replies.append(str(getattr(s, "safe_z", 65.0)))
         for i, (sub, times) in enumerate(list(s.fail_after_apply)):
             if times > 0 and applied and sub in code:
                 s.fail_after_apply[i] = (sub, times - 1)

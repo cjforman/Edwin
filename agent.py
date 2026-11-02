@@ -253,6 +253,41 @@ def bed_check(job, skip=False):
     return r
 
 
+PARK_MARGIN = 5.0  # mm of part top below SafeZ that still counts as clear
+
+
+def park_check(d, tool, max_z):
+    """Refuse a part that the end-of-print park (T-1) would crush.
+
+    T-1 runs sys/tfree<tool>.g, which moves the bed to global.SafeZ before
+    docking the tool. If the part is taller than SafeZ (65 mm) that move
+    raises it into the nozzle, still hot: the 179 mm recorder_set was crushed
+    and knocked off the bed that way on 2026-10-30. The guarded macros skip
+    the move when the bed is already further away (duet.PARK_GUARD); without
+    them, or when the firmware cannot be asked, only a part that stays
+    PARK_MARGIN below SafeZ may print. Returns a dict for the log.
+    """
+    try:
+        safe_z = d.safe_z()
+    except Exception as e:
+        log(f"SafeZ unknown ({e})")
+        safe_z = None
+    try:
+        guarded = d.park_guarded(tool)
+    except Exception as e:
+        log(f"cannot read sys/tfree{tool}.g ({e})")
+        guarded = None
+    tall = safe_z is None or max_z > safe_z - PARK_MARGIN
+    r = {"max_z": max_z, "safe_z": safe_z, "park_guarded": guarded, "tall": tall}
+    if tall and not guarded:
+        raise SystemExit(
+            f"the part is {max_z:.1f} mm tall and the Duet parks the tool by moving the bed to "
+            f"SafeZ {safe_z if safe_z is not None else '?'} mm: sys/tfree{tool}.g would raise the part "
+            f"into the nozzle (it {'has no' if guarded is False else 'could not be checked for the'} "
+            f"guard '{duet.PARK_GUARD}'). Upload the guarded macros from 3DParts/duet_sys first.")
+    return r
+
+
 def print_job(d, path, tool, port, verify, start, timelapse_dir=None, poll=3.0, job=None, bed_clear=False):
     path, summary = prepared_gcode(path, tool, job)
     log("checked: " + json.dumps(summary))
@@ -260,6 +295,7 @@ def print_job(d, path, tool, port, verify, start, timelapse_dir=None, poll=3.0, 
     problems = duet.preflight(st, tool)
     if problems:
         raise SystemExit("preflight:\n  " + "\n  ".join(problems))
+    log("park check: " + json.dumps(park_check(d, tool, summary["z"][1])))
     if start:
         bed_check(job, skip=bed_clear)
     name = os.path.basename(path)

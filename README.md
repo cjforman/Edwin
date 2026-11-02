@@ -49,7 +49,9 @@ means `<parts>/cube30_m3/cube30_m3.T2.gcode`. Paths work too, and
    Edwin homes the printer if it is not (refused with a tool on the
    carriage), pictures the bed with camera 1 and stops if the picture
    differs from the empty-bed reference (`--bed-clear` overrides when you
-   have looked), uploads over USB if the cable is in (1.4 MB in
+   have looked), refuses a part taller than the Duet's SafeZ unless the
+   tool-park macro is the guarded one (see 2026-10-30 in the status log),
+   uploads over USB if the cable is in (1.4 MB in
    11 s) or over Wi-Fi if not (2.3 MB in 16 s), starts the job from the SD
    card, watches it to the end, records a frame per layer from camera 1
    into `<parts>/cube30_m3/timelapse/` and writes an MP4, and logs every
@@ -97,7 +99,7 @@ heater, bed-area and height problems. `--port none` forces the Wi-Fi path;
 `--port COM6` names the cable. `--timelapse` with no argument records into
 `<job>/timelapse/`.
 
-**Changing Edwin.** Edit here, run `python -m pytest tests -q` (37 tests,
+**Changing Edwin.** Edit here, run `python -m pytest tests -q` (42 tests,
 about 30 s; the OpenSCAD, PrusaSlicer and Blender ones skip where those
 are missing), commit, push. The parts folder is never touched by git and
 this repo never holds a part, a credential or the home network's name
@@ -247,11 +249,30 @@ estimate (1:46, 13.3 g) in its own folder.
   line and the timelapse now go by Z, and that a missed camera frame needs
   one retry.
 
-Offline: `python -m pytest tests` (37 tests, about 50 s) covers resets,
+* 2026-10-29 16:25 to 2026-10-30 07:53, `recorder_set` (179 mm tall, 15.5
+  hours, 901 timelapse frames with the ring flashed per shot) printed
+  perfectly and was then crushed by its own end-of-print park. `T-1` runs
+  `sys/tfree2.g`, whose first move is `G53 G1 Z{global.SafeZ}` with SafeZ
+  65 mm: at the end of a 179 mm print that raised the bed 120 mm into the
+  nozzle, still at 220 C because the heater-off came after the park, and
+  the fast X/Y moves to the dock knocked the part off. The Duet reported
+  idle and nothing in the log looked wrong; the frame after the last layer
+  shows the bed risen out of view. Every tool change (`tfree0-3.g`,
+  `tpre0-3.g`) and `homeall.g`/`homez.g` make the same move. Fix in two
+  places: the eight tool-change macros wrap the move in
+  `if move.axes[2].machinePosition < global.SafeZ` (originals and guarded
+  copies with a diff in `3DParts/duet_sys/`), and Edwin's end G-code turns
+  the heater off before `T-1` while `agent.park_check` reads SafeZ and
+  `tfree<tool>.g` from the Duet and refuses a part taller than SafeZ minus
+  5 mm unless the guard is there. Homing with a tall part left on the bed
+  is still unguarded: Edwin's bed check runs after homing, so clear the
+  bed before a power cycle.
+
+Offline: `python -m pytest tests` (42 tests, about 50 s) covers resets,
 expired sessions, Wi-Fi uploads with dropped connections, USB, the watch
 loop, the job folders, fit and estimate, the timelapse's layer detection,
-and, when the tools are installed, OpenSCAD rendering, slicing with the
-presets and a Blender render.
+the park check, and, when the tools are installed, OpenSCAD rendering,
+slicing with the presets and a Blender render.
 
 Not yet done: the `/part` skill driven by a fresh session typing `/part`;
 a brush wipe before the print (the Duet has `macros/wipe.g`, nothing calls
