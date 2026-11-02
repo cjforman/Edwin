@@ -83,7 +83,11 @@ whichever the command wants); a path works too.
    would crush it: say so, do not work around it), uploads over USB when
    the cable is in (else
    Wi-Fi; plug the cable in for anything over a megabyte), starts from the
-   SD card, watches to the end and logs to `<parts>/NAME/agent_<stamp>.log`.
+   SD card (the start G-code wipes the hot nozzle four passes over the
+   wire brush before the first layer), watches to the end and logs to
+   `<parts>/NAME/agent_<stamp>.log`. A print that fails between 23:00 and
+   08:00 gets its heaters turned off; by day Edwin leaves the heat on and
+   says so.
 
 ## Rules
 

@@ -94,12 +94,13 @@ empty and the printer homed; `--bed-clear` skips the check; without a
 reference or a camera the check is logged and the print goes on).
 `python agent.py HOST home` homes on its own. A G-code file from the E3D
 profile is rewritten as `<name>.T<tool>.gcode` (camera tool parked, print
-tool heated and picked, parked again at the end) and checked for tool,
+tool heated, picked and wiped four passes over the wire brush, parked
+again at the end) and checked for tool,
 heater, bed-area and height problems. `--port none` forces the Wi-Fi path;
 `--port COM6` names the cable. `--timelapse` with no argument records into
 `<job>/timelapse/`.
 
-**Changing Edwin.** Edit here, run `python -m pytest tests -q` (42 tests,
+**Changing Edwin.** Edit here, run `python -m pytest tests -q` (47 tests,
 about 30 s; the OpenSCAD, PrusaSlicer and Blender ones skip where those
 are missing), commit, push. The parts folder is never touched by git and
 this repo never holds a part, a credential or the home network's name
@@ -268,15 +269,23 @@ estimate (1:46, 13.3 g) in its own folder.
   is still unguarded: Edwin's bed check runs after homing, so clear the
   bed before a power cycle.
 
-Offline: `python -m pytest tests` (42 tests, about 50 s) covers resets,
+* 2026-11-02, two owner rules. A print that does not complete between
+  23:00 and 08:00 (aborted, cancelled, or the agent itself failing) gets
+  its tool heater and bed turned off (`agent.heat_off`, `NIGHT`); by day
+  the heat is left as it is, and a print the firmware halted cannot be
+  told anything. And the start G-code now wipes the hot nozzle four passes
+  over the static wire brush before the first layer, using the stroke from
+  the Duet's `macros/wipe.g` (X300..341.5 at Y167.4) without its purge,
+  servo and fan steps (`toolchanger.brush_wipe`).
+
+Offline: `python -m pytest tests` (47 tests, about 50 s) covers resets,
 expired sessions, Wi-Fi uploads with dropped connections, USB, the watch
 loop, the job folders, fit and estimate, the timelapse's layer detection,
-the park check, and, when the tools are installed, OpenSCAD rendering,
+the park check, the night heat-off, the brush wipe, and, when the tools are installed, OpenSCAD rendering,
 slicing with the presets and a Blender render.
 
-Not yet done: the `/part` skill driven by a fresh session typing `/part`;
-a brush wipe before the print (the Duet has `macros/wipe.g`, nothing calls
-it). Lighting: the timelapse and the bed check use `cam1_print_view.json`,
+Not yet done: the `/part` skill driven by a fresh session typing `/part`.
+Lighting: the timelapse and the bed check use `cam1_print_view.json`,
 which since 2026-10-29 flashes the Jetson's read ring (its power switch is
 separate) for each shot, about two seconds a layer with the ring aimed at
 the print, and exposes 100 ms at gain 2 for a dark room; under the flood

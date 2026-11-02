@@ -11,6 +11,8 @@ import subprocess
 import tempfile
 import zipfile
 
+import toolchanger
+
 PRUSA = r"C:\Program Files\Prusa3D\PrusaSlicer\prusa-slicer-console.exe"
 PROJECT_CONFIG = "Metadata/Slic3r_PE.config"
 
@@ -19,7 +21,7 @@ CLI_CRASH_KEYS = ("bed_temperature_extruder", "wipe_tower_extruder")
 
 
 def toolchanger_gcode(tool):
-    """Start/end G-code that drops off the camera, prints with ``tool``, parks it."""
+    """Start/end G-code: drop off the camera, heat and pick ``tool``, wipe it on the brush, print, park it."""
     start = "\n".join([
         "T-1 ; drop off whatever is on the carriage (camera T0)",
         "M190 S[first_layer_bed_temperature] ; bed",
@@ -28,6 +30,7 @@ def toolchanger_gcode(tool):
         "G29 S1 ; load the stored height map",
         f"T{tool} ; pick up the print tool",
         f"M116 P{tool} ; wait for T{tool}",
+        *toolchanger.brush_wipe(),
         "G1 Z5 F5000 ; lift nozzle",
     ])
     end = "\n".join([

@@ -121,3 +121,54 @@ def test_end_gcode_turns_the_heater_off_before_parking():
     lines = [ln.split(";")[0].strip() for ln in toolchanger.prepare(raw, 2).splitlines()]
     assert lines.index("G10 P2 S0 R0") < lines.index("T-1", 1)
     assert toolchanger.check(toolchanger.prepare(raw, 2), 2)[0] == []
+
+
+def test_at_night_is_eleven_to_eight():
+    def at(h):
+        return agent.at_night(time.struct_time((2026, 11, 2, h, 30, 0, 0, 306, 0)))
+    assert at(23) and at(0) and at(7) and not at(8) and not at(22) and not at(12)
+
+
+def _run_print(fake, sample, monkeypatch, tmp_path):
+    monkeypatch.setattr(time, "sleep", lambda s: None)
+    monkeypatch.setattr(duet_usb, "find_port", lambda: None)
+    def finished(d, poll=3.0):  # the job ends while we "watch"
+        fake.job_file, fake.status = None, "idle"
+        return "idle"
+    monkeypatch.setattr(agent, "watch", finished)
+    monkeypatch.setattr(agent, "bed_check", lambda job, skip=False: {"clear": True})
+    return agent.print_job(client(fake), sample, 2, "auto", "size", True, None, 0, job=str(tmp_path))
+
+
+def test_a_print_that_fails_at_night_gets_the_heaters_turned_off(fake, sample, monkeypatch, tmp_path):
+    monkeypatch.setattr(agent, "at_night", lambda now=None: True)
+    fake.aborted = True
+    assert _run_print(fake, sample, monkeypatch, tmp_path) == 1
+    after = fake.gcode_log[fake.gcode_log.index(next(g for g in fake.gcode_log if g.startswith("M32"))):]
+    assert "G10 P2 S0 R0" in after and "M140 S0" in after
+
+
+def test_a_print_that_fails_by_day_keeps_its_heat(fake, sample, monkeypatch, tmp_path):
+    monkeypatch.setattr(agent, "at_night", lambda now=None: False)
+    fake.aborted = True
+    assert _run_print(fake, sample, monkeypatch, tmp_path) == 1
+    assert "M140 S0" not in fake.gcode_log
+
+
+def test_a_completed_print_sends_no_extra_heat_off(fake, sample, monkeypatch, tmp_path):
+    monkeypatch.setattr(agent, "at_night", lambda now=None: True)
+    assert _run_print(fake, sample, monkeypatch, tmp_path) == 0
+    assert "M140 S0" not in fake.gcode_log
+
+
+def test_start_gcode_wipes_the_brush_after_the_tool_is_hot():
+    import prusa
+    import toolchanger
+    raw = "G10 S220 P0" + chr(10) + "M116" + chr(10) + "T2" + chr(10) + "G1 X1 Y1 E1" + chr(10) + "M104 S0"
+    lines = [ln.split(";")[0].strip() for ln in toolchanger.prepare(raw, 2).splitlines()]
+    i = lines.index("M116 P2")
+    assert lines[i + 1] == "G1 X300 Y167.4 F10000"
+    assert lines[i + 2:i + 10].count("G1 X341.5 F5000") == 4 and lines[i + 10] == "G1 X280 F10000"
+    assert toolchanger.check(toolchanger.prepare(raw, 2), 2)[0] == []
+    start = prusa.toolchanger_gcode(2)["start_gcode"]
+    assert start.index("M116 P2") < start.index("G1 X341.5") < start.index("G1 Z5 F5000")

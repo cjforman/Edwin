@@ -12,6 +12,7 @@ moves:
     G10 P<t> S R      heat the print tool (active and standby)
     T<t>              pick it up (RRF runs tfree/tpre/tpost)
     M116 P<t>         wait on that tool only
+    brush wipe        four passes over the wire brush (brush_wipe)
     ...print...
     lift Z 5          clear of the part
     G10 P<t> S0 R0    heater off
@@ -29,6 +30,24 @@ MAX_Z = 300.0
 MIN_EXTRUDE_TEMP = 170.0
 
 _HEAT_P0 = re.compile(r"^G10 S(\d+(?:\.\d+)?) P0\b.*$")
+
+# The static wire brush, off the +X edge of the bed: the stroke that the
+# Duet's macros/wipe.g makes (X300..341.5 at Y167.4, tool coordinates). The
+# head moves in X and Y only, so the brush height needs no Z move; after a
+# tool change the bed sits at SafeZ, well below it.
+BRUSH_X = (300.0, 341.5)
+BRUSH_Y = 167.4
+BRUSH_PASSES = 4
+
+
+def brush_wipe(passes=BRUSH_PASSES):
+    """G-code for `passes` out-and-back strokes over the wire brush, hot nozzle, no purge."""
+    x0, x1 = BRUSH_X
+    lines = [f"G1 X{x0:g} Y{BRUSH_Y:g} F10000 ; to the wire brush ({passes} passes, from macros/wipe.g)"]
+    for _ in range(passes):
+        lines += [f"G1 X{x1:g} F5000", f"G1 X{x0:g} F5000"]
+    lines.append("G1 X280 F10000 ; off the brush")
+    return lines
 _WORD = re.compile(r"([A-Z])(-?\d*\.?\d+)")
 
 
@@ -48,6 +67,7 @@ def prepare(text, tool):
             out.append(f"G10 P{tool} S{temp} R{temp} ; heat print tool T{tool}")
         elif code == "M116":
             out.append(f"M116 P{tool} ; wait for T{tool}")
+            out.extend(brush_wipe())
         elif code == "M104 S0":
             out.append("G91\nG1 Z5 F600 ; lift clear of the part\nG90")
             out.append(f"G10 P{tool} S0 R0 ; T{tool} heater off before the park")

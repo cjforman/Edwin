@@ -194,7 +194,8 @@ class Handler(http.server.BaseHTTPRequestHandler):
                         "layer": 1 + s.job_pos * 10 // max(size, 1), "duration": 12, "timesLeft": {"file": 100},
                         "lastFileName": None}
             return {"file": None, "filePosition": 0, "layer": None, "duration": None, "timesLeft": {},
-                    "lastFileName": "0:/gcodes/done.gcode", "lastFileAborted": False, "lastFileCancelled": False}
+                    "lastFileName": "0:/gcodes/done.gcode", "lastFileAborted": getattr(s, "aborted", False),
+                    "lastFileCancelled": False}
         return None
 
     def gcode(self, code):

@@ -288,6 +288,23 @@ def park_check(d, tool, max_z):
     return r
 
 
+NIGHT = (23, 8)  # hours: a failed print between these turns the heaters off
+
+
+def at_night(now=None):
+    """True between NIGHT[0]:00 and NIGHT[1]:00 local time, when nobody is there to deal with a failed print."""
+    hour = (now or time.localtime()).tm_hour
+    start, end = NIGHT
+    return hour >= start or hour < end
+
+
+def heat_off(d, tool):
+    """Tool heater and bed off (the end G-code does this itself after a completed print)."""
+    d.gcode(f"G10 P{tool} S0 R0", wait_reply=0.5)
+    d.gcode("M140 S0", wait_reply=0.5)
+    log(f"heaters off: T{tool} and bed (print did not complete at night)")
+
+
 def print_job(d, path, tool, port, verify, start, timelapse_dir=None, poll=3.0, job=None, bed_clear=False):
     path, summary = prepared_gcode(path, tool, job)
     log("checked: " + json.dumps(summary))
@@ -316,6 +333,13 @@ def print_job(d, path, tool, port, verify, start, timelapse_dir=None, poll=3.0, 
     proc = start_timelapse(d.host, timelapse_dir) if timelapse_dir else None
     try:
         final = watch(d, poll=poll)
+    except BaseException:
+        if at_night():
+            try:
+                heat_off(d, tool)
+            except Exception as e:
+                log(f"could not turn the heaters off: {e}")
+        raise
     finally:
         finish_timelapse(proc)
     p = d.job_progress()
@@ -331,6 +355,8 @@ def print_job(d, path, tool, port, verify, start, timelapse_dir=None, poll=3.0, 
     faults = [i for i, h in enumerate(heaters) if h and h.get("state") == "fault"]
     if faults:
         log(f"heater fault on heater(s) {faults}")
+    if outcome != "completed" and final not in ("off", "halted") and at_night():
+        heat_off(d, tool)
     log(f"job {p.get('last_file') or name} {outcome}; printer {final}; link stats {d.stats}")
     return 0 if outcome == "completed" else 1
 
